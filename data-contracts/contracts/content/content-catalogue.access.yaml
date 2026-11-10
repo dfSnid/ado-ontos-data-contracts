@@ -1,0 +1,11 @@
+# Access for the Content catalogue data product. Applied by the publish job after merge.
+# Grants are declarative: the publish job adds what is listed and removes anything else
+# on these objects (object owners are never touched). Never grant by hand.
+contract: content-catalogue
+grants:
+  - principal: dp-content-consumers
+    privileges: [SELECT]
+    objects: [title, episode]
+  - principal: dp-content-stewards
+    privileges: [SELECT]
+    objects: [title, episode]

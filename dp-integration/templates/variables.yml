@@ -1,0 +1,15 @@
+# Variables every stage of the contract pipelines uses: the environment file, plus what the
+# dpi command needs to find it again at run time.
+parameters:
+  - name: environment
+    type: string
+
+variables:
+  - template: /config/environments/${{ parameters.environment }}.yml
+  - name: DP_CONFIG_DIR
+    value: $(Build.SourcesDirectory)/integration/config
+  - name: DP_ENVIRONMENT
+    value: ${{ parameters.environment }}
+  # Application id of the Azure Databricks resource in Entra ID, the same in every tenant.
+  - name: azureDatabricksResource
+    value: 2ff814a6-3304-4ab8-85cb-cd0e6f879c1d

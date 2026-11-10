@@ -1,0 +1,40 @@
+# Publish Tier 2 data contracts and data products after merge to main.
+# The Steward's PR approval was the gate, so this only applies what main says. In each
+# environment, in order (dev, then prod), with step 3 in the Ontos environment only:
+#   1. quality checks (advisory: results go to Ontos, they never fail the run)
+#   2. Unity Catalog: tags, comments, contract properties, grants (blocking)
+#   3. Ontos: domains and teams, contracts (versions, status, quality items), data products
+#      (status behind the gates, certification and the Certified badge, publication scope)
+# Runs as the publisher identity through the WIF service connection; no stored secret.
+# Every host, id and service connection comes from config/environments/<environment>.yml.
+#
+# A contract is published in the environments it lists as servers, so a contract with only a
+# dev server is skipped in prod. There is one Ontos, so it is updated once, in ontosEnvironment
+# (normally the last, production), from that environment's view of Unity Catalog.
+parameters:
+  - name: environment         # one environment (the original form); ignored when environments is set
+    type: string
+    default: dev
+  - name: environments        # several, in publish order, for example [dev, prod]
+    type: object
+    default: []
+  - name: ontosEnvironment    # with environments: the one that updates Ontos (required)
+    type: string
+    default: ''
+  - name: qualityChecks       # false: skip the quality checks, so Ontos gets no quality items
+    type: boolean
+    default: true
+
+stages:
+  - ${{ if eq(length(parameters.environments), 0) }}:
+    - template: stages/publish-env.yml
+      parameters:
+        environment: ${{ parameters.environment }}
+        qualityChecks: ${{ parameters.qualityChecks }}
+        ontos: true
+  - ${{ each env in parameters.environments }}:
+    - template: stages/publish-env.yml
+      parameters:
+        environment: ${{ env }}
+        qualityChecks: ${{ parameters.qualityChecks }}
+        ontos: ${{ eq(env, parameters.ontosEnvironment) }}

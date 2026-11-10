@@ -1,0 +1,47 @@
+resources:
+  schemas:
+    content:
+      catalog_name: ${var.catalog}
+      name: content
+      comment: Content data product (bundle content). Metadata is applied by the publish pipeline.
+
+  pipelines:
+    content_linear:
+      name: content-linear
+      catalog: ${var.catalog}
+      schema: ${resources.schemas.content.name}
+      serverless: true
+      # contract_expectations.py and the contract sit here, copied in by the deploy.
+      root_path: ../src/pipeline
+      libraries:
+        - file:
+            path: ../src/pipeline/content_linear.py
+      configuration:
+        contract_path: ${workspace.file_path}/src/pipeline/contracts/content-linear.odcs.yaml
+        source_table: ${var.source_table}
+
+  jobs:
+    build:
+      name: content-build
+      description: Refreshes the content-linear pipeline (dim_content_current, fct_linear_as_run_event), then mv_linear_airtime.
+      tasks:
+        - task_key: refresh
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.content_linear.id}
+        - task_key: metric_view
+          depends_on:
+            - task_key: refresh
+          environment_key: default
+          spark_python_task:
+            python_file: ../src/metric_view.py
+            parameters:
+              - --catalog
+              - ${var.catalog}
+              - --schema
+              - ${resources.schemas.content.name}
+              - --definition
+              - ${workspace.file_path}/src/mv_linear_airtime.yaml
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "2"

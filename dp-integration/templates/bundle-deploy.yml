@@ -1,0 +1,99 @@
+# Deploy a data product's Databricks Asset Bundle, one stage per environment, in order.
+# Each stage deploys the bundle to its target and runs the build job, so the objects the
+# contract names exist before the contract goes active. A stage's ADO Environment carries
+# the approvals: add an Approvals check on the production one, and the prod stage waits.
+#
+# The contracts repository's publish pipeline has this pipeline as a completion trigger, so
+# Unity Catalog metadata is applied again after every deploy (a redeploy that recreates an
+# object drops its tags, comments and grants).
+#
+# A bundle whose pipeline applies contract rules (expectations.py) sets rulesManifest. The stage
+# then also checks out the `contracts` (data-contracts) and `integration` (dp-integration)
+# repository resources, which the calling pipeline declares, and copies the listed contracts and
+# the expectations module into the bundle before it deploys (bin/fetch-rules.sh). So the rules a
+# pipeline applies are always the merged contract's.
+#
+# Runs as the publisher identity through the WIF service connection; no stored secret. The
+# identity needs workspace access and CREATE SCHEMA on the catalogs (setup/publisher-identity.sh
+# with publisherDeploysBundles: 'true'). Use a separate deploy identity in production.
+parameters:
+  - name: environments        # [{environment: dev, target: dev, adoEnvironment: content-dev}, ...]
+    type: object
+  - name: runJob              # bundle job resource to run after each deploy; '' runs nothing
+    type: string
+    default: build
+  - name: bundleRoot          # folder with databricks.yml, relative to the repository root
+    type: string
+    default: .
+  - name: cliVersion          # Databricks CLI release, pinned so a deploy is repeatable
+    type: string
+    default: 1.18.0
+  - name: rulesManifest       # contracts the pipeline applies, relative to bundleRoot; '' for none
+    type: string
+    default: ''
+
+stages:
+  - ${{ each env in parameters.environments }}:
+    - stage: deploy_${{ env.target }}
+      displayName: Deploy bundle (${{ env.target }})
+      variables:
+        - template: variables.yml
+          parameters:
+            environment: ${{ env.environment }}
+      jobs:
+        - deployment: deploy
+          displayName: Deploy and build (${{ env.target }})
+          environment: ${{ env.adoEnvironment }}
+          pool:
+            ${{ if ne(variables.agentPool, '') }}:
+              name: ${{ variables.agentPool }}
+            ${{ else }}:
+              vmImage: ${{ variables.vmImage }}
+          strategy:
+            runOnce:
+              deploy:
+                steps:
+                  - ${{ if eq(parameters.rulesManifest, '') }}:
+                    - checkout: self
+                  - ${{ else }}:
+                    - checkout: self
+                      path: s/bundle
+                    - checkout: contracts
+                      path: s/contracts
+                    - checkout: integration
+                      path: s/integration
+                    - script: >-
+                        integration/bin/fetch-rules.sh
+                        'bundle/${{ parameters.bundleRoot }}/${{ parameters.rulesManifest }}' contracts integration
+                      displayName: Contract rules for the pipeline
+                      workingDirectory: $(Pipeline.Workspace)/s
+                  - script: |
+                      set -euo pipefail
+                      v='${{ parameters.cliVersion }}'
+                      dir="$(Agent.ToolsDirectory)/databricks-cli/$v"
+                      if [ ! -x "$dir/databricks" ]; then
+                        mkdir -p "$dir"
+                        curl -fsSL -o "$dir/cli.zip" "https://github.com/databricks/cli/releases/download/v$v/databricks_cli_${v}_linux_amd64.zip"
+                        unzip -q -o "$dir/cli.zip" -d "$dir" && rm "$dir/cli.zip"
+                      fi
+                      echo "##vso[task.prependpath]$dir"
+                    displayName: Install Databricks CLI ${{ parameters.cliVersion }}
+                  - task: AzureCLI@2
+                    displayName: bundle deploy and run (${{ env.target }})
+                    inputs:
+                      azureSubscription: ${{ variables.serviceConnection }}
+                      scriptType: bash
+                      scriptLocation: inlineScript
+                      ${{ if eq(parameters.rulesManifest, '') }}:
+                        workingDirectory: $(Build.SourcesDirectory)/${{ parameters.bundleRoot }}
+                      ${{ else }}:
+                        workingDirectory: $(Pipeline.Workspace)/s/bundle/${{ parameters.bundleRoot }}
+                      inlineScript: |
+                        set -euo pipefail
+                        # The CLI takes the publisher identity's Entra token from az; no stored secret.
+                        export DATABRICKS_HOST='https://$(databricksHost)' DATABRICKS_AUTH_TYPE=azure-cli
+                        databricks bundle validate -t '${{ env.target }}'
+                        databricks bundle deploy -t '${{ env.target }}' --auto-approve
+                        if [ -n '${{ parameters.runJob }}' ]; then
+                          databricks bundle run '${{ parameters.runJob }}' -t '${{ env.target }}'
+                        fi

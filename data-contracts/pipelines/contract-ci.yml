@@ -1,0 +1,15 @@
+# PR build validation for all contracts. Wired to main by branch policy, so no CI trigger.
+trigger: none
+
+resources:
+  repositories:
+    - repository: integration
+      type: git
+      name: <ado-project>/dp-integration   # the project that holds dp-integration
+      ref: refs/heads/main
+
+extends:
+  template: templates/contract-ci.yml@integration
+  parameters:
+    # config/environments/<environment>.yml in dp-integration: hosts, ids, service connection.
+    environment: dev

@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.xml
+out.txt
+*.egg-info/
+.pytest_cache/
+setup/.*.tmp

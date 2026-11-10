@@ -1,0 +1,196 @@
+# Content linear: Tier 2 (domain) data contract for the linear schedule slice of the Content
+# data product. Synthetic example data, built by the dp-content bundle.
+# The status moves with the gates: proposed (G2), approved (G3, objects may not exist yet),
+# active (G4, after the bundle has built them). The Content Data Stewards approve each PR.
+apiVersion: v3.1.0
+kind: DataContract
+id: content-linear
+name: Content linear
+version: 1.1.0
+status: active
+domain: content
+dataProduct: content
+tenant: dp-contracts
+
+description:
+  purpose: Current content dimension, linear as-run events and an airtime metric view, for schedule and airtime analytics.
+  usage: Query mv_linear_airtime with MEASURE() for airtime by channel, genre and day. Join the fact to the dimension on content_id.
+  limitations: Synthetic example data derived from the content catalogue. Channel codes are placeholders.
+
+team:
+  name: Content
+  members:
+    - username: content.bdo@example.com
+      role: Business Data Owner
+    - username: content.steward@example.com
+      role: Data Steward
+
+servers:
+  - server: dev
+    type: databricks
+    environment: dev
+    host: adb-0000000000000000.0.azuredatabricks.net   # your workspace host
+    catalog: content_dev
+    schema: content
+  - server: prod
+    type: databricks
+    environment: prod
+    host: adb-0000000000000000.0.azuredatabricks.net   # your workspace host
+    catalog: content_prod
+    schema: content
+
+schema:
+  - name: dim_content_current
+    physicalName: dim_content_current
+    physicalType: materialized_view
+    logicalType: object
+    businessName: Content (current)
+    description: One row per content item, current version only.
+    properties:
+      - name: content_id
+        logicalType: string
+        physicalType: STRING
+        primaryKey: true
+        required: true
+        unique: true
+        description: Stable content identifier.
+      - name: title_id
+        logicalType: string
+        physicalType: STRING
+        required: true
+        description: Catalogue title the content item belongs to.
+      - name: title_name
+        logicalType: string
+        physicalType: STRING
+        required: true
+        description: Display name of the title.
+      - name: genre
+        logicalType: string
+        physicalType: STRING
+        description: Primary genre.
+      - name: content_type
+        logicalType: string
+        physicalType: STRING
+        required: true
+        description: series, movie or special.
+      - name: provider
+        logicalType: string
+        physicalType: STRING
+        description: Production company or distributor.
+      - name: valid_from
+        logicalType: date
+        physicalType: DATE
+        required: true
+        description: Date the current version took effect.
+  - name: fct_linear_as_run_event
+    physicalName: fct_linear_as_run_event
+    physicalType: materialized_view
+    logicalType: object
+    businessName: Linear as-run event
+    description: One row per item that went to air on a linear channel, as run.
+    properties:
+      - name: as_run_event_id
+        logicalType: string
+        physicalType: STRING
+        primaryKey: true
+        required: true
+        unique: true
+        description: Stable as-run event identifier.
+      - name: content_id
+        logicalType: string
+        physicalType: STRING
+        required: true
+        description: Content item that aired.
+      - name: channel_code
+        logicalType: string
+        physicalType: STRING
+        required: true
+        description: Linear channel (placeholder codes ch1, ch2, ch3).
+        quality:
+          - type: library
+            metric: invalidValues
+            arguments:
+              validValues: [ch1, ch2, ch3]
+            mustBe: 0
+            dimension: conformity
+            severity: warning
+      - name: scheduled_start
+        logicalType: timestamp
+        physicalType: TIMESTAMP
+        required: true
+        description: Planned start time.
+      - name: actual_start
+        logicalType: timestamp
+        physicalType: TIMESTAMP
+        required: true
+        description: Start time as run.
+      - name: actual_end
+        logicalType: timestamp
+        physicalType: TIMESTAMP
+        required: true
+        description: End time as run.
+      - name: duration_seconds
+        logicalType: integer
+        physicalType: INT
+        required: true
+        description: Time on air in seconds.
+    quality:
+      - type: sql
+        name: as_run_ends_after_start
+        description: Every event ends after it starts.
+        query: SELECT count(*) FROM ${object} WHERE actual_end <= actual_start
+        mustBe: 0
+        dimension: consistency
+        severity: warning
+        customProperties:
+          - property: expectation    # the same rule row by row, for the pipeline (dp-content)
+            value: actual_end > actual_start
+  - name: mv_linear_airtime
+    physicalName: mv_linear_airtime
+    physicalType: metric_view
+    logicalType: object
+    businessName: Linear airtime
+    description: Airtime metrics over the as-run events, by channel, genre and air date. Query the measures with MEASURE().
+    properties:
+      - name: channel_code
+        logicalType: string
+        physicalType: STRING
+        description: Linear channel.
+      - name: genre
+        logicalType: string
+        physicalType: STRING
+        description: Primary genre of the content that aired.
+      - name: air_date
+        logicalType: date
+        physicalType: DATE
+        description: Date the item went to air.
+      - name: airings
+        logicalType: integer
+        physicalType: BIGINT
+        description: Number of as-run events.
+      - name: airtime_hours
+        logicalType: number
+        physicalType: DOUBLE
+        description: Total time on air in hours.
+      - name: titles_aired
+        logicalType: integer
+        physicalType: BIGINT
+        description: Number of distinct content items that aired.
+
+slaProperties:
+  - property: freshness
+    value: 24
+    unit: h
+    description: Data refreshed at least daily (Tier 2 target, advisory).
+
+customProperties:
+  - property: governanceTier
+    value: 2
+  - property: securityClassification
+    value: internal
+  - property: containsPii
+    value: false
+  - property: consumptionModes
+    value: [reporting, analytics]
+  - property: incompleteInformationBehaviour
+    value: Return what is known and flag events with no matching content item; never infer them.

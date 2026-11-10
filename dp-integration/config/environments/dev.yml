@@ -1,0 +1,37 @@
+# Environment "dev": replace every <...> value. Copy this file for each further environment
+# (for example test.yml, prod.yml) and pick one with the pipelines' `environment` parameter.
+#
+# This file is an Azure DevOps variable template, so the pipeline templates read it directly.
+# The dpi command and the setup scripts read the same file. Keep the mapping form below
+# (name: value), and quote values that look like numbers. No secrets in this file.
+# Any value can be overridden for one run with DP_<NAME>, for example DP_WAREHOUSE_ID.
+# A value left as <...> counts as unset. databricksHost is the host name only, no https://.
+variables:
+  # Pipelines
+  serviceConnection: <arm-service-connection>   # ARM service connection (workload identity federation)
+  agentPool: ''                                 # self-hosted pool name; empty uses Microsoft-hosted
+  vmImage: ubuntu-latest
+  pythonVersion: '3.12'
+
+  # Databricks
+  databricksHost: <adb-0000000000000000.0.azuredatabricks.net>
+  workspaceId: '<numeric workspace id>'
+  warehouseId: <sql warehouse id>
+  contractServer: dev                           # the `servers` entry in each contract to publish
+
+  # Ontos
+  ontosUrl: <https://ontos-0000000000000000.0.azure.databricksapps.com>
+
+  # Setup scripts only (setup/*.sh)
+  databricksAccountId: <databricks account id>
+  azureResourceGroup: <resource group for the publisher identity>
+  adoOrganisation: <azure devops organisation>
+  adoProject: <azure devops project>
+  publisherIdentityName: id-dp-publisher
+  publisherClientId: <printed by setup/publisher-identity.sh>
+  publisherCatalogs: <catalog>                  # space-separated catalogs the publisher manages
+  publisherDeploysBundles: 'false'              # 'true': the publisher also deploys bundles (a shortcut for a trial)
+  ontosAppName: ontos
+  ontosLakebaseProject: ontos-db
+  ontosAppCatalog: ontos_app
+  demoCatalog: content_dev                      # synthetic tables (setup/bootstrap.sh)

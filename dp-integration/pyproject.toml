@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dp-integration"
+version = "1.0.0"
+description = "Tier 2 data contract tooling: mandatory-field check, Unity Catalog publish, Ontos sync"
+requires-python = ">=3.11"
+# Pinned so every pipeline run uses the versions this setup was verified with.
+dependencies = [
+    "datacontract-cli[databricks]==1.2.7",
+    "databricks-sdk==0.151.0",
+    "PyYAML==6.0.3",
+    "jsonschema==4.26.0",
+    "requests>=2.32,<3",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
+[project.scripts]
+dpi = "dp_integration.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

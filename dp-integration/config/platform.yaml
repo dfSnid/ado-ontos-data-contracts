@@ -1,0 +1,100 @@
+# Platform settings: HOW Tier 2 contracts are published. The same in every environment.
+# WHERE they are published (hosts, ids, service connection) is in environments/<name>.yml.
+# Read by the dpi command and the setup scripts. No secrets in this file.
+
+tags:
+  # Governed tag keys set on every published table: <prefix><key>. The dp_ prefix avoids a
+  # clash in an account that already has domain, status and sensitivity tags. Use an empty
+  # prefix in an account you own.
+  prefix: dp_
+  keys:
+    tier: tier
+    domain: domain
+    status: status
+    sensitivity: sensitivity
+  # Contract governanceTier -> tier tag value.
+  tier_values:
+    1: enterprise
+    2: domain
+  # Contract status -> status tag value. ODCS 3.1.0 has no "published"; active means published.
+  status_values:
+    draft: draft
+    proposed: draft
+    under_review: draft
+    approved: draft
+    active: published
+    certified: published
+    deprecated: deprecated
+    retired: deprecated
+  # Allowed values of the domain and sensitivity tags. Keep these in step with the enums in
+  # the mandatory-field schema (a unit test checks that they match).
+  domain_values: [content, audience, viewership]
+  sensitivity_values: [public, internal, confidential, restricted]
+
+contract:
+  # Custom properties in the contract that drive the tags.
+  tier_property: governanceTier
+  sensitivity_property: securityClassification
+  # Table properties that point a table back to its contract: <prefix>id, version, commit.
+  table_property_prefix: dp.contract_
+  # The access file next to each contract: <contract>.odcs.yaml -> <contract><suffix>.
+  access_file_suffix: .access.yaml
+  # Mandatory-field overlay used by CI, relative to this file.
+  mandatory_schema: ../schemas/mandatory.schema.json
+
+grants:
+  # The access file is the full list of direct grants on each table: anything else is revoked.
+  revoke_unlisted: true
+  # Also give access-file principals USE CATALOG and USE SCHEMA on the parents (add only).
+  # Needs MANAGE on the catalog and schema. Set to false if the platform team grants USE
+  # when it creates each domain catalog.
+  parent_use: true
+
+publish:
+  # The contract is approved (G3) before the producer builds the objects, so publish-uc treats a
+  # missing object as pending while the contract has one of these statuses. Once the contract
+  # is active (or deprecated) every object must exist.
+  pending_statuses: [draft, proposed, under_review, approved]
+  # Unity Catalog system tag behind the Certified and Deprecated badges in Catalog Explorer.
+  # sync-products sets it from the product file (certification, status deprecated).
+  certification_tag: system.certification_status
+
+ontos:
+  # Ontos keeps the contract id in this custom property; it is how a record is found again.
+  source_id_property: sourceId
+  # Source recorded on quality items pushed from datacontract test results.
+  quality_source: external
+  # Quality dimensions Ontos knows. Any other check is counted under "other".
+  quality_dimensions: [accuracy, completeness, conformity, consistency, coverage, timeliness, uniqueness]
+  request_timeout_seconds: 60
+  roles:
+    # Ontos role for the publish pipeline identity, reached through this account group.
+    # Ontos v1.0.2 gates quality items on the data-domains feature, so it needs Read/Write there.
+    # The pipeline also registers domains, teams and products, and records certification. Ontos
+    # needs the PRODUCTS approval privilege to certify; the real approval is the Steward's PR.
+    publisher:
+      name: Contract Publisher
+      description: Publish pipeline identity. Registers Tier 2 domains, contracts, products and quality results.
+      group: dp-publishers
+      feature_permissions:
+        data-contracts: Read/Write
+        data-domains: Read/Write
+        data-products: Read/Write
+        teams: Read/Write
+        data-catalog: Read-only
+      approval_privileges:
+        PRODUCTS: true
+    # Account groups added to the default Ontos roles (add only).
+    groups:
+      Data Producer: [dp-content-producers]
+      Data Steward: [dp-content-stewards]
+      Data Consumer: [dp-content-consumers]
+
+setup:
+  # Account groups that setup/bootstrap.sh creates and assigns to the workspace. With groups
+  # synced from Entra ID, leave this empty and create them there instead.
+  groups: [dp-content-producers, dp-content-stewards, dp-content-consumers, dp-other-analysts]
+
+logging:
+  # DEBUG, INFO, WARNING or ERROR. Override for one run with --log-level or DP_LOG_LEVEL.
+  level: INFO

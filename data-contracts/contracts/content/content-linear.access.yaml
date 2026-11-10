@@ -1,0 +1,11 @@
+# Access for the Content linear contract. Applied by the publish job after merge, in every
+# environment the contract has a server for. Consumers get the dimension and the metric view;
+# the fact table stays with the Stewards. Never grant by hand.
+contract: content-linear
+grants:
+  - principal: dp-content-consumers
+    privileges: [SELECT]
+    objects: [dim_content_current, mv_linear_airtime]
+  - principal: dp-content-stewards
+    privileges: [SELECT]
+    objects: [dim_content_current, fct_linear_as_run_event, mv_linear_airtime]

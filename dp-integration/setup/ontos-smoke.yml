@@ -1,0 +1,43 @@
+# Check that the publisher identity can call the Ontos API (run manually after setup or a rebuild).
+# Databricks Apps accept Databricks OAuth tokens only, so dpi exchanges the identity's Entra token
+# at the workspace token endpoint first. No federation policy is needed on Azure Databricks.
+trigger: none
+
+parameters:
+  - name: environment
+    type: string
+    default: dev
+
+variables:
+  - template: /config/environments/${{ parameters.environment }}.yml
+  - name: DP_CONFIG_DIR
+    value: $(Build.SourcesDirectory)/config
+  - name: DP_ENVIRONMENT
+    value: ${{ parameters.environment }}
+
+jobs:
+  - job: smoke
+    displayName: Call Ontos as the publisher identity
+    pool:
+      ${{ if ne(variables.agentPool, '') }}:
+        name: ${{ variables.agentPool }}
+      ${{ else }}:
+        vmImage: ${{ variables.vmImage }}
+    steps:
+      - checkout: self
+      - task: UsePythonVersion@0
+        inputs:
+          versionSpec: $(pythonVersion)
+      - script: python -m pip install --quiet --disable-pip-version-check "$(Build.SourcesDirectory)"
+        displayName: Install dpi
+      - task: AzureCLI@2
+        displayName: Call Ontos as the publisher identity
+        inputs:
+          azureSubscription: ${{ variables.serviceConnection }}
+          scriptType: bash
+          scriptLocation: inlineScript
+          inlineScript: |
+            set -euo pipefail
+            # Application id of the Azure Databricks resource in Entra ID, the same in every tenant.
+            export DATABRICKS_TOKEN=$(az account get-access-token --resource 2ff814a6-3304-4ab8-85cb-cd0e6f879c1d --query accessToken -o tsv)
+            dpi ontos-check

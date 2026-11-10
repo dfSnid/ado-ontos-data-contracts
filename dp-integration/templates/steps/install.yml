@@ -1,0 +1,14 @@
+# Check out the contracts repository and this one side by side, then install the dpi command.
+#   $(Build.SourcesDirectory)/contracts    the repository whose pipeline is running (self)
+#   $(Build.SourcesDirectory)/integration  this repository (resource `integration`)
+# Fixed paths, so the pipelines work whatever the two repositories are called.
+steps:
+  - checkout: self
+    path: s/contracts
+  - checkout: integration
+    path: s/integration
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: $(pythonVersion)
+  - script: python -m pip install --quiet --disable-pip-version-check "$(Build.SourcesDirectory)/integration"
+    displayName: Install dpi

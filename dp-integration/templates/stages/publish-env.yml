@@ -1,0 +1,110 @@
+# One environment of the publish pipeline: quality checks, Unity Catalog, and (in the Ontos
+# environment only) Ontos. Used by templates/publish.yml once per environment; a stage
+# depends on the one before it, so each environment publishes only after the previous one.
+#
+# Each environment checks the quality of the contracts it holds, with its own credentials, and
+# publishes the results as artifact quality-<environment>. The Ontos environment merges them,
+# its own results first, so a contract deployed only in dev still gets quality items in Ontos.
+parameters:
+  - name: environment
+    type: string
+  - name: qualityChecks
+    type: boolean
+    default: true
+  - name: ontos                # true in the one environment that registers in Ontos
+    type: boolean
+    default: true
+
+stages:
+  - stage: publish_${{ parameters.environment }}
+    displayName: Publish (${{ parameters.environment }})
+    variables:
+      - template: ../variables.yml
+        parameters:
+          environment: ${{ parameters.environment }}
+      - name: qualityDir
+        value: $(Agent.TempDirectory)/quality
+    jobs:
+      - job: publish
+        displayName: Publish contracts (${{ parameters.environment }})
+        pool:
+          ${{ if ne(variables.agentPool, '') }}:
+            name: ${{ variables.agentPool }}
+          ${{ else }}:
+            vmImage: ${{ variables.vmImage }}
+        steps:
+          - template: ../steps/install.yml
+
+          - ${{ if parameters.qualityChecks }}:
+            - task: AzureCLI@2
+              displayName: Quality checks (advisory)
+              inputs:
+                azureSubscription: ${{ variables.serviceConnection }}
+                scriptType: bash
+                scriptLocation: inlineScript
+                workingDirectory: $(Build.SourcesDirectory)/contracts
+                inlineScript: |
+                  shopt -s globstar nullglob
+                  export DATACONTRACT_DATABRICKS_TOKEN=$(az account get-access-token --resource $(azureDatabricksResource) --query accessToken -o tsv)
+                  export DATACONTRACT_DATABRICKS_SERVER_HOSTNAME='$(databricksHost)'
+                  export DATACONTRACT_DATABRICKS_HTTP_PATH='/sql/1.0/warehouses/$(warehouseId)'
+                  mkdir -p "$(qualityDir)"
+                  for f in contracts/**/*.odcs.yaml; do
+                    grep -q "^  - server: $(contractServer)\$" "$f" || continue   # not deployed here
+                    datacontract test --server '$(contractServer)' "$f" \
+                      --output "$(qualityDir)/$(basename "$f").json" --output-format json \
+                      || echo "##vso[task.logissue type=warning;sourcepath=$f]Quality checks failed for $f (advisory at Tier 2)"
+                  done
+                  echo '${{ parameters.environment }}' > "$(qualityDir)/.environment"   # never an empty artifact
+                  exit 0
+            - publish: $(qualityDir)
+              artifact: quality-${{ parameters.environment }}
+              displayName: Keep quality results
+
+          - task: AzureCLI@2
+            displayName: Unity Catalog
+            inputs:
+              azureSubscription: ${{ variables.serviceConnection }}
+              scriptType: bash
+              scriptLocation: inlineScript
+              workingDirectory: $(Build.SourcesDirectory)/contracts
+              inlineScript: |
+                set -euo pipefail
+                shopt -s globstar nullglob
+                # Entra token of the publisher identity for Azure Databricks; no stored secret.
+                export DATABRICKS_TOKEN=$(az account get-access-token --resource $(azureDatabricksResource) --query accessToken -o tsv)
+                dpi publish-uc contracts/**/*.odcs.yaml
+
+          - ${{ if and(parameters.qualityChecks, parameters.ontos) }}:
+            - download: current
+              patterns: quality-*/**
+              displayName: Quality results of every environment
+            - script: |
+                set -euo pipefail
+                # Own results stay; another environment's fill in contracts not deployed here.
+                for d in "$(Pipeline.Workspace)"/quality-*/; do
+                  [ "$d" = "$(Pipeline.Workspace)/quality-${{ parameters.environment }}/" ] && continue
+                  cp -n "$d"*.json "$(qualityDir)/" 2>/dev/null || true
+                done
+                ls "$(qualityDir)"
+              displayName: Merge quality results
+
+          - ${{ if parameters.ontos }}:
+            - task: AzureCLI@2
+              displayName: Ontos
+              inputs:
+                azureSubscription: ${{ variables.serviceConnection }}
+                scriptType: bash
+                scriptLocation: inlineScript
+                workingDirectory: $(Build.SourcesDirectory)/contracts
+                inlineScript: |
+                  set -euo pipefail
+                  shopt -s globstar nullglob
+                  # dpi exchanges this Entra token for a Databricks token: the Ontos app accepts no other.
+                  export DATABRICKS_TOKEN=$(az account get-access-token --resource $(azureDatabricksResource) --query accessToken -o tsv)
+                  # Domains first (products are owned by their domain's team), then contracts,
+                  # then products (a product's ports point at the registered contracts).
+                  if [ -f domains/domains.yaml ]; then dpi sync-domains domains/domains.yaml; fi
+                  dpi sync-ontos --quality-dir "$(qualityDir)" contracts/**/*.odcs.yaml
+                  products=(products/**/*.odps.yaml)
+                  if [ ${#products[@]} -gt 0 ]; then dpi sync-products "${products[@]}"; fi

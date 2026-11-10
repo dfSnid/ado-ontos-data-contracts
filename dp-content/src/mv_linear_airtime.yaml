@@ -1,0 +1,22 @@
+# Metric view definition for mv_linear_airtime. {catalog} and {schema} are filled in by build.py.
+# Dimension and measure names are the columns the content-linear contract describes.
+version: 1.1
+source: "`{catalog}`.`{schema}`.fct_linear_as_run_event"
+joins:
+  - name: content
+    source: "`{catalog}`.`{schema}`.dim_content_current"
+    "on": source.content_id = content.content_id
+dimensions:
+  - name: channel_code
+    expr: channel_code
+  - name: genre
+    expr: content.genre
+  - name: air_date
+    expr: CAST(actual_start AS DATE)
+measures:
+  - name: airings
+    expr: COUNT(1)
+  - name: airtime_hours
+    expr: SUM(duration_seconds) / 3600D
+  - name: titles_aired
+    expr: COUNT(DISTINCT content_id)

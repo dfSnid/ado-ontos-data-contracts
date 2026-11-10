@@ -1,0 +1,126 @@
+# Contract CI for Tier 2 data products. Used as PR build validation on data-contracts.
+# Blocking: ODCS lint, the mandatory-field check, and the product check (data product files,
+# the domain registry, port contracts and versions, status against the contracts).
+# Advisory: quality checks against Databricks. They warn, never fail ("Always Proceed"). One
+# exception: a pipeline rule (a Lakeflow expectation from the contract, expectations.py) that does
+# not run on the built object fails the PR, rather than the next pipeline update. The rows a rule
+# would flag are only warnings.
+# Every host, id and service connection comes from config/environments/<environment>.yml.
+parameters:
+  - name: environment
+    type: string
+    default: dev
+  - name: qualityChecks       # false: lint and mandatory fields only, no Databricks access needed
+    type: boolean
+    default: true
+
+stages:
+  - stage: validate
+    displayName: Contract validation (blocking)
+    variables:
+      - template: variables.yml
+        parameters:
+          environment: ${{ parameters.environment }}
+    jobs:
+      - job: lint
+        displayName: Lint and mandatory fields
+        pool:
+          ${{ if ne(variables.agentPool, '') }}:
+            name: ${{ variables.agentPool }}
+          ${{ else }}:
+            vmImage: ${{ variables.vmImage }}
+        steps:
+          - template: steps/install.yml
+          - script: |
+              set -euo pipefail
+              shopt -s globstar nullglob
+              mkdir -p "$(Common.TestResultsDirectory)/lint"
+              rc=0
+              for f in contracts/**/*.odcs.yaml; do
+                datacontract lint "$f" --output "$(Common.TestResultsDirectory)/lint/$(basename "$f").xml" --output-format junit || rc=1
+              done
+              exit $rc
+            displayName: ODCS lint
+            workingDirectory: $(Build.SourcesDirectory)/contracts
+          - script: |
+              set -euo pipefail
+              shopt -s globstar nullglob
+              dpi check-mandatory contracts/**/*.odcs.yaml
+            displayName: Mandatory fields
+            workingDirectory: $(Build.SourcesDirectory)/contracts
+          - script: |
+              set -euo pipefail
+              shopt -s globstar nullglob
+              if [ ! -f domains/domains.yaml ]; then echo "No domain registry: product check skipped"; exit 0; fi
+              dpi check-products products/**/*.odps.yaml
+            displayName: Products and domains
+            workingDirectory: $(Build.SourcesDirectory)/contracts
+          - task: PublishTestResults@2
+            condition: always()
+            inputs:
+              testResultsFormat: JUnit
+              testResultsFiles: '$(Common.TestResultsDirectory)/lint/*.xml'
+              testRunTitle: Contract lint
+
+  - ${{ if parameters.qualityChecks }}:
+    - stage: quality
+      displayName: Quality checks (advisory)
+      dependsOn: validate
+      variables:
+        - template: variables.yml
+          parameters:
+            environment: ${{ parameters.environment }}
+      jobs:
+        - job: test
+          displayName: datacontract test
+          pool:
+            ${{ if ne(variables.agentPool, '') }}:
+              name: ${{ variables.agentPool }}
+            ${{ else }}:
+              vmImage: ${{ variables.vmImage }}
+          steps:
+            - template: steps/install.yml
+            - task: AzureCLI@2
+              displayName: Run quality checks (advisory)
+              inputs:
+                azureSubscription: ${{ variables.serviceConnection }}
+                scriptType: bash
+                scriptLocation: inlineScript
+                workingDirectory: $(Build.SourcesDirectory)/contracts
+                inlineScript: |
+                  shopt -s globstar nullglob
+                  # Entra token of the publisher identity for Azure Databricks; no stored secret.
+                  export DATACONTRACT_DATABRICKS_TOKEN=$(az account get-access-token --resource $(azureDatabricksResource) --query accessToken -o tsv)
+                  export DATACONTRACT_DATABRICKS_SERVER_HOSTNAME='$(databricksHost)'
+                  export DATACONTRACT_DATABRICKS_HTTP_PATH='/sql/1.0/warehouses/$(warehouseId)'
+                  mkdir -p "$(Common.TestResultsDirectory)/quality"
+                  for f in contracts/**/*.odcs.yaml; do
+                    grep -q "^  - server: $(contractServer)\$" "$f" || continue   # not deployed here
+                    if ! datacontract test --server '$(contractServer)' "$f" --output "$(Common.TestResultsDirectory)/quality/$(basename "$f").xml" --output-format junit > out.txt 2>&1; then
+                      echo "##vso[task.logissue type=warning;sourcepath=$f]Quality checks failed for $f (advisory at Tier 2)"
+                    fi
+                    cat out.txt
+                    grep -q 'has warnings' out.txt && echo "##vso[task.logissue type=warning;sourcepath=$f]Quality warnings for $f (advisory at Tier 2)"
+                  done
+                  exit 0
+            - task: AzureCLI@2
+              displayName: Pipeline rules (blocking when a rule does not run)
+              condition: succeededOrFailed()
+              inputs:
+                azureSubscription: ${{ variables.serviceConnection }}
+                scriptType: bash
+                scriptLocation: inlineScript
+                workingDirectory: $(Build.SourcesDirectory)/contracts
+                inlineScript: |
+                  set -euo pipefail
+                  shopt -s globstar nullglob
+                  export DATABRICKS_TOKEN=$(az account get-access-token --resource $(azureDatabricksResource) --query accessToken -o tsv)
+                  dpi check-expectations contracts/**/*.odcs.yaml
+            - task: PublishTestResults@2
+              condition: always()
+              continueOnError: true
+              inputs:
+                testResultsFormat: JUnit
+                testResultsFiles: '$(Common.TestResultsDirectory)/quality/*.xml'
+                testRunTitle: Contract quality (advisory)
+                failTaskOnFailedTests: false

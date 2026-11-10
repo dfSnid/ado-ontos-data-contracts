@@ -1,0 +1,36 @@
+# Publish after merge: the Steward's PR approval is the Tier 2 gate, so main is what gets applied.
+# Also runs when a data product's bundle deploy completes, so the metadata is applied to the
+# objects the deploy just built (G3 to G4).
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - contracts/**
+      - products/**
+      - domains/**
+pr: none
+
+resources:
+  repositories:
+    - repository: integration
+      type: git
+      name: <ado-project>/dp-integration   # the project that holds dp-integration
+      ref: refs/heads/main
+  pipelines:
+    # One entry per data product bundle; source is the ADO pipeline name.
+    - pipeline: content_deploy
+      source: dp-content-deploy
+      project: <ado-project>             # the project that holds dp-content
+      trigger:
+        branches:
+          include:
+            - main
+
+extends:
+  template: templates/publish.yml@integration
+  parameters:
+    # config/environments/<name>.yml in dp-integration: hosts, ids, service connection.
+    environments: [dev, prod]
+    ontosEnvironment: prod

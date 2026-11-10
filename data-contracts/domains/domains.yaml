@@ -1,0 +1,14 @@
+# Domain registry: the one list of business domains. Every contract and data product names one.
+# The publish pipeline (dpi sync-domains) creates or updates each domain in Ontos and its owner
+# team, and adds the listed groups to the team. It only adds: removing a domain or a group here
+# changes nothing in Ontos. A new domain also needs a value in the Unity Catalog domain tag and
+# its catalogs, which the platform team adds (CI fails until the tag allows it).
+# Changes need a platform owner's review (required reviewer on /domains).
+domains:
+  - name: content
+    description: What the business makes, buys and schedules, from the content library to the linear schedule.
+    team:
+      name: content-domain
+      title: Content domain team
+      # Producers and Stewards own the products; the publisher group lets the pipeline manage them.
+      groups: [dp-content-stewards, dp-content-producers, dp-publishers]

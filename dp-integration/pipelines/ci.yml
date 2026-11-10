@@ -1,0 +1,24 @@
+# Unit tests for the dpi package. Runs on every push to main; add it as build validation on main
+# so a change to the shared code is tested before the contract pipelines pick it up.
+trigger:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '3.12'
+  - script: python -m pip install --quiet --disable-pip-version-check ".[test]"
+    displayName: Install dpi and pytest
+  - script: python -m pytest --junitxml="$(Common.TestResultsDirectory)/pytest.xml"
+    displayName: Unit tests
+  - task: PublishTestResults@2
+    condition: always()
+    inputs:
+      testResultsFormat: JUnit
+      testResultsFiles: '$(Common.TestResultsDirectory)/pytest.xml'
+      testRunTitle: dpi unit tests
