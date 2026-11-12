@@ -14,6 +14,9 @@ The flow has four lanes:
    and the contract's quality rules run as Lakeflow expectations.
 4. [Publish and sync](#4-publish-and-sync): Unity Catalog and Ontos are set to match `main`.
 
+To see the result, [what it looks like in Ontos](#what-it-looks-like-in-ontos) walks through the
+screens where the states, the quality results and the certification show.
+
 Across all four, a data product moves through [the lifecycle](#the-lifecycle-and-its-gates) from
 draft to active, one gate at a time.
 
@@ -210,3 +213,47 @@ stateDiagram-v2
 
 A typical first release is three pull requests: the contract and product to `approved`, then the
 bundle, then the contract and product to `active` with any certification.
+
+Ontos has one more step between `proposed` and `approved`: `under_review`. The sync passes
+through it on the way, so it shows in the product's history, but a product file never needs to
+set it. Before `under_review`, every port contract must be registered in Ontos.
+
+## What it looks like in Ontos
+
+Ontos is the display copy. People read it; the publisher identity writes it. Approval happens in
+the pull request, so a contract or product in Ontos moves only after a Steward approved the
+change in git. The screens below are from a sandbox install with the synthetic example. The
+publisher identity's id is replaced with `publisher-identity`.
+
+### The contracts list
+
+Each contract shows its version, its owner team and its status. A contract with older
+versions in Ontos shows a count next to the version; turn on **Show all versions** to list
+them. `dpi sync-ontos` registers a new contract version as the next version of the one before,
+so Ontos keeps one contract with its history, and walks each version's status to the file's.
+
+<img alt="The Ontos Data Contracts list: Content catalogue, version 1.1.0 with 2 versions, active, published to the organisation; Content linear, version 1.0.0, owner team content-domain, active." src="assets/ontos-contracts.png" width="100%">
+
+### Quality results on each contract version
+
+After `datacontract test` runs in the publish pipeline, `dpi sync-ontos` adds one quality item per
+dimension to the contract version, with the passed and total checks. Each run adds a new set, so
+the table is also a history. The source is External because the results come from the pipeline,
+not from Ontos.
+
+<img alt="The Data Quality section of the Content linear contract in Ontos: overall score 100%, and items such as datacontract test: uniqueness 2 of 2, consistency 1 of 1, conformity 41 of 41 and completeness 12 of 12, each with its measured time." src="assets/ontos-contract-quality.png" width="100%">
+
+### The data product and its history
+
+The product page shows the current state: status, quality, certification level, the owner team,
+and each output port (a deliverable in Ontos) linked to its contract. The Certify and Publish
+buttons are not used here: the sync certifies to match `certificationLevel` in the product file.
+
+<img alt="The Content data product in Ontos: status active, quality 100%, certification Silver, team content-domain, and one deliverable, Linear v1.0.0, linked to the Content linear contract." src="assets/ontos-product.png" width="100%">
+
+Comments, then Changes, opens the activity timeline. It lists every change the sync made, newest
+first, with the status before and after. Read from the bottom up, this product went from `draft`
+through `proposed`, `under_review` and `approved` to `active`, one step per entry. Every entry
+names the publisher identity: to see who approved a step, open the pull request that merged it.
+
+<img alt="The Ontos activity timeline for the Content data product, newest first: created at draft, then status changes draft to proposed, proposed to under_review, under_review to approved and approved to active, each made by the publisher identity." src="assets/ontos-product-timeline.png" width="360">

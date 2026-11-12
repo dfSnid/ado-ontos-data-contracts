@@ -95,6 +95,40 @@ def fct_linear_as_run_event():
 
 More: [Data products, bundles and pipeline rules](docs/15-data-products-bundles-and-pipeline-rules.md).
 
+## What you see in Ontos
+
+Approval happens in the pull request; Ontos shows the result. Every record in Ontos is written by
+the publisher identity from `main`, so a status there can only move after a Steward approved the
+change. That makes Ontos the place to see where each contract and product stands, and how it got
+there.
+
+<img align="right" width="300" alt="The Ontos activity timeline for the Content data product, newest first: created at draft, then status changes draft to proposed, proposed to under_review, under_review to approved and approved to active, each made by the publisher identity." src="docs/assets/ontos-product-timeline.png">
+
+**The activity timeline is the audit trail.** Open a data product and choose Comments, then
+Changes. Each publish run that changes the product adds entries: the status before and after,
+who made the change and when. Read from the bottom up, it is the product's path through the
+gates:
+
+- **Create** at `draft` (G1). A new product always starts here.
+- **draft to proposed** (G2).
+- **proposed to under_review to approved** (G3). `dpi sync-products` walks to the status in the
+  product file one allowed step at a time, so Ontos's `under_review` step shows too.
+- **approved to active** (G4), once the port contracts are active and the bundle has built the
+  objects.
+
+Every entry names the publisher identity, never a person: nobody edits Ontos by hand. To see who
+approved a step, open the pull request that merged it.
+
+<br clear="right">
+
+**The product page shows where it stands now:** its status, quality score and certification
+level, with each output port linked to its contract and version.
+
+<img alt="The Content data product in Ontos: status active, quality 100%, certification Silver, team content-domain, and one deliverable, Linear v1.0.0, linked to the Content linear contract." src="docs/assets/ontos-product.png" width="100%">
+
+The contracts list, and the quality results the sync attaches to each contract version, are in
+[How it works: what it looks like in Ontos](docs/how-it-works.md#what-it-looks-like-in-ontos).
+
 ## Try it in five minutes
 
 The unit tests and the contract checks need no cloud access. With Python 3.11 or later:
