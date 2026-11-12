@@ -23,6 +23,7 @@
 | `products.py` | `DataProductFile`, `OutputPort`, `OntosProductSync`, `GateError`, `check_product()` | Read an ODPS product file; check it in CI; sync it to Ontos behind the gates, with certification, badges and scope |
 | `lifecycle.py` | `walk()`, `at_least()`, the Ontos transitions | The shortest walk of allowed status steps from one status to another |
 | `expectations.py` | `ContractExpectations`, `Expectation` | Turn a contract's row-level rules into Lakeflow expectations. Copied into product bundles, so it needs PyYAML only |
+| `new_product.py` | `NewProduct`, `TemplateError` | Render `product_template/` for `dpi new-product`: the contract, access and product files, and the bundle |
 | `expectation_check.py` | `ExpectationCheck` | Run each rule on the built objects and count the rows it would flag |
 | `logs.py` | `SourceFormatter`, `AzureDevOpsIssueHandler`, `configure()` | Log format and Azure DevOps annotations |
 | `cli.py` | `CommandContext`, `build_parser()`, `main()` | The `dpi` command |
@@ -94,6 +95,7 @@ ctx = CommandContext(settings, workspace=fake_ws, ontos=fake_ontos)   # what the
 | Use a self-signed Ontos certificate or a proxy | Pass your own `requests.Session` to `OntosClient` |
 | A new command | A function `(args, ctx) -> int` in `cli.py` and a sub-parser in `build_parser()` |
 | A new kind of pipeline rule | `ContractExpectations._rule()` in `expectations.py`, and a test in `tests/test_expectations.py` |
+| A change to what new products start with | The files under `product_template/` (`{{key}}` placeholders), and `tests/test_new_product.py` |
 | A new product gate | `check_product()` (CI, no Ontos) and `OntosProductSync._gate()` (publish) |
 
 ## Tests
@@ -103,4 +105,4 @@ pip install -e "./dp-integration[test]"
 cd dp-integration && python -m pytest -q
 ```
 
-119 tests, with a fake workspace and a fake Ontos in `tests/conftest.py`. They cover the configuration loading and overrides, the contract model, the mandatory check and its line numbers, the Unity Catalog publisher (drift, grants, idempotency, materialized and metric views), the Ontos sync and roles, domains, products and their gates, the lifecycle walk, the pipeline rules and their check, token exchange, logging and the command line.
+131 tests, with a fake workspace and a fake Ontos in `tests/conftest.py`. They cover the configuration loading and overrides, the contract model, the mandatory check and its line numbers, the Unity Catalog publisher (drift, grants, idempotency, materialized and metric views), the Ontos sync and roles, domains, products and their gates, the lifecycle walk, the pipeline rules and their check, the new-product templates, token exchange, logging and the command line.

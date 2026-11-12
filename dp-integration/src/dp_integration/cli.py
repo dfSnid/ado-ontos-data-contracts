@@ -10,6 +10,7 @@
     dpi -e dev ontos-roles                                setup: map groups onto Ontos roles
     dpi -e dev ontos-check                                setup: call Ontos as the current identity
     dpi -e dev config get env.warehouseId                 setup scripts: read one setting
+    dpi new-product --domain content --product orders     start a product: contract, product file, bundle
 
 Exit codes: 0 success, 1 at least one contract or call failed, 2 a setting is missing or invalid.
 
@@ -243,6 +244,47 @@ def sync_products(args: argparse.Namespace, ctx: CommandContext) -> int:
     return FAILED if failed else OK
 
 
+def new_product(args: argparse.Namespace, ctx: CommandContext) -> int:
+    from .new_product import NewProduct, TemplateError
+
+    try:
+        new = NewProduct.build(args.domain, args.product, args.contract, args.dataset,
+                               args.catalog_dev, args.catalog_prod)
+    except TemplateError as e:
+        log.error("new-product: %s", e)
+        return FAILED
+    domain_values = ctx.settings.tags.domain_values
+    if new.domain not in domain_values:
+        log.error("domain '%s' is not an allowed value of the domain tag (%s). The platform team adds it to "
+                  "tags.domain_values in config/platform.yaml and to the domain enum in the mandatory schema, "
+                  "and creates its catalogs", new.domain, ", ".join(domain_values))
+        return FAILED
+    contracts_root = Path(args.contracts_root)
+    bundle_dir = Path(args.bundle_dir or contracts_root.resolve().parent / new.values["bundle"])
+    try:
+        written = new.write(contracts_root, bundle_dir)
+    except TemplateError as e:
+        log.error("new-product: %s", e)
+        return FAILED
+    for path in written:
+        log.info("wrote %s", path)
+    registry = contracts_root / "domains" / "domains.yaml"
+    known = registry.is_file() and DomainRegistry.from_file(registry).get(new.domain) is not None
+    v = new.values
+    steps = [] if known else [f"Add the domain to {registry} (a platform owner reviews it):\n\n{new.registry_entry()}"]
+    steps += [
+        "Replace every <placeholder> in the contract, access and product files, and describe the real columns.",
+        f"Open a pull request in data-contracts: contract CI checks it, the {new.domain} Data Stewards approve.",
+        f"In {bundle_dir}: fill in the workspace host, source_table and the pipeline query, then push it as "
+        f"the {v['bundle']} repository and replace <ado-project> in pipelines/deploy.yml.",
+        f"Create the Azure DevOps Environments {new.product}-dev and {new.product}-prod (Approvals on prod) "
+        f"and the pipeline {v['bundle']}-deploy; run it once, then add it to data-contracts/pipelines/publish.yml.",
+        "Move the contract and product to approved (G3) before the build, and to active (G4) after it.",
+    ]
+    sys.stdout.write("Next steps:\n" + "".join(f"  {n}. {step}\n" for n, step in enumerate(steps, 1)))
+    return OK
+
+
 def ontos_roles(args: argparse.Namespace, ctx: CommandContext) -> int:
     with ctx.ontos as client:
         OntosRoleMapper(client, ctx.settings.ontos).apply(dry_run=args.dry_run)
@@ -372,6 +414,18 @@ def build_parser() -> argparse.ArgumentParser:
                    help="domain registry; its teams own the contracts (skipped if the file is missing)")
     p.add_argument("contracts", nargs="+")
     p.set_defaults(func=sync_ontos)
+
+    p = sub.add_parser("new-product", parents=[common],
+                       help="start a data product: contract, access and product files, and its bundle")
+    p.add_argument("--domain", required=True, help="an allowed value of the domain tag")
+    p.add_argument("--product", required=True, help="product id, lower case words joined by -")
+    p.add_argument("--contract", help="contract id of the output port (default: the product id)")
+    p.add_argument("--dataset", help="first object the pipeline builds (default: the product id, with _)")
+    p.add_argument("--catalog-dev", help="catalog of the dev server (default: <domain>_dev)")
+    p.add_argument("--catalog-prod", help="catalog of the prod server (default: <domain>_prod)")
+    p.add_argument("--contracts-root", default=".", help="data-contracts checkout (default: .)")
+    p.add_argument("--bundle-dir", help="folder for the new bundle (default: ../dp-<product>)")
+    p.set_defaults(func=new_product, env_required=())
 
     p = sub.add_parser("ontos-roles", parents=[common], help="map platform groups onto Ontos roles (admin)")
     p.add_argument("--dry-run", action="store_true", help="log the changes, make none")

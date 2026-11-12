@@ -45,7 +45,7 @@ Work through the steps in order. Each page explains what the step does, why, the
 | 8 | [Branch policies](10-branch-policies.md) | ADO project admin | A direct push to `main` is rejected |
 | 9 | [Verify the install](12-verify-the-install.md) | Platform engineer with a Data Steward | All six scenarios and the data product checks pass |
 
-Reference pages: [Contract CI pipeline explained](09-contract-ci-pipeline-explained.md), [Publish pipeline explained](11-publish-pipeline-explained.md), [Data products, bundles and pipeline rules](15-data-products-bundles-and-pipeline-rules.md), [The dpi package](13-the-dpi-package.md) and [Operations and troubleshooting](14-operations-and-troubleshooting.md).
+Reference pages: [Contract CI pipeline explained](09-contract-ci-pipeline-explained.md), [Publish pipeline explained](11-publish-pipeline-explained.md), [Data products, bundles and pipeline rules](15-data-products-bundles-and-pipeline-rules.md), [Start a new data product](16-start-a-new-data-product.md), [The dpi package](13-the-dpi-package.md) and [Operations and troubleshooting](14-operations-and-troubleshooting.md).
 
 ## Conventions in this guide
 
@@ -71,3 +71,4 @@ Reference pages: [Contract CI pipeline explained](09-contract-ci-pipeline-explai
 13. [The dpi package](13-the-dpi-package.md)
 14. [Operations and troubleshooting](14-operations-and-troubleshooting.md)
 15. [Data products, bundles and pipeline rules](15-data-products-bundles-and-pipeline-rules.md)
+16. [Start a new data product](16-start-a-new-data-product.md)

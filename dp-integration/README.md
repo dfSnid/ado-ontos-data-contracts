@@ -51,6 +51,7 @@ dpi -e prod sync-products --dry-run --profile <oauth-profile> products/**/*.odps
 dpi -e dev ontos-roles --dry-run --profile <oauth-profile>
 dpi -e dev ontos-check --profile <oauth-profile>
 dpi -e dev config get env.warehouseId
+dpi new-product --domain content --product orders   # contract, product file and bundle, from templates
 ```
 
 Exit codes: 0 success, 1 a contract or call failed, 2 a setting is missing or invalid.
@@ -72,6 +73,7 @@ and line they relate to.
 | `domains.py` | `DomainRegistry`, `Domain`, `Team`, `OntosDomainSync` |
 | `products.py` | `DataProductFile`, `OutputPort`, `OntosProductSync`, `GateError` |
 | `lifecycle.py` | Ontos status transitions and `walk` (the steps between two statuses) |
+| `new_product.py` | `NewProduct`: renders `product_template/` for `dpi new-product` |
 | `cli.py` | `CommandContext` (builds the clients) and the commands |
 | `logs.py` | `SourceFormatter`, `AzureDevOpsIssueHandler` |
 

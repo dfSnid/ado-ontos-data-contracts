@@ -73,7 +73,7 @@ dpi --version
 cd dp-integration && dpi -e <env> config get env.databricksHost
 ```
 
-Run the unit tests once to check the install (119 tests, no network needed):
+Run the unit tests once to check the install (131 tests, no network needed):
 
 ```bash
 pip install -e "./dp-integration[test]" && (cd dp-integration && python -m pytest -q)
@@ -95,6 +95,7 @@ pip install -e "./dp-integration[test]" && (cd dp-integration && python -m pytes
 | `dpi -e <env> config get <dotted.key>` | Setup scripts | Prints one setting, for example `env.warehouseId` or `setup.groups` |
 | `dpi config tag-key <tier\|domain\|status\|sensitivity>` | Setup scripts | Full tag key, for example `tier` gives `dp_tier` |
 | `dpi config tag-values <logical>` | Setup scripts | Allowed values of a governed tag |
+| `dpi new-product --domain <d> --product <p>` | Data Producers | Writes a new product's contract, access and product files, and its bundle ([Start a new data product](16-start-a-new-data-product.md)) |
 
 Options go before or after the command: `-c/--config-dir`, `-e/--environment`, `--log-level` and `--profile`. Exit codes: 0 success, 1 at least one contract or call failed, 2 a setting is missing or invalid.
 
