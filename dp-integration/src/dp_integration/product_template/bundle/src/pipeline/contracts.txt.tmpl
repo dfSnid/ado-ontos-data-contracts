@@ -1,0 +1,4 @@
+# Contracts whose row-level rules this pipeline applies, relative to the data-contracts root.
+# bin/fetch-rules.sh in dp-integration copies them into contracts/ here before each deploy.
+# Keep pipelines/deploy.yml's contracts trigger paths in step with this list.
+contracts/{{domain}}/{{contract}}.odcs.yaml

@@ -97,7 +97,7 @@ A change to a data quality rule is a contract pull request only. After merge, th
 
 ## The product bundle
 
-`dp-content` is the template: a Databricks Asset Bundle that builds the Content product's objects. Copy it for each new product.
+`dp-content` is the worked example: a Databricks Asset Bundle that builds the Content product's objects. To start a new product, run `dpi new-product` ([Start a new data product](16-start-a-new-data-product.md)), which writes the contract, the product file and a bundle shaped like this one.
 
 | Object | Kind | Built by |
 |---|---|---|
