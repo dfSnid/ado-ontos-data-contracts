@@ -20,6 +20,7 @@ dpi check-products products/*/*.odps.yaml
 cd ..
 
 python3 scripts/check-text.py
+python3 scripts/build-diagrams.py --check
 ```
 
 `scripts/check-text.py` fails on an em-dash or en-dash in any file (use a comma, a colon,
@@ -33,6 +34,9 @@ looks like a Databricks personal access token.
   Ontos (`dp-integration/tests/`); add to them when you change behaviour.
 - **Docs with behaviour.** If a change alters what a pipeline does, update the page in `docs/`
   that explains it, and `docs/how-it-works.md` if the flow changes.
+- **Diagrams from source.** The infographics in `docs/assets/` are built by
+  `scripts/build-diagrams.py`. Change the labels there, run it, and commit both; CI runs it with
+  `--check`.
 - **Placeholders, not values.** Anything specific to an installation is a `<placeholder>` in
   `dp-integration/config/environments/`. The setup scripts stop on an unset one.
 - **Synthetic data only** in examples.

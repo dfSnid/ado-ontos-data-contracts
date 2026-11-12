@@ -1,51 +1,101 @@
-# Data contracts and data products on Azure Databricks
+# Lakehouse Governance as Code
 
-A working reference implementation of contract-governed data products on Azure Databricks,
-driven from Azure DevOps. Data contracts (ODCS 3.1.0) and data product files (ODPS v1.0.0)
-live in git. Pipelines validate every change, deploy the product's Databricks Asset Bundle and
-publish the metadata to Unity Catalog and to [Ontos](https://github.com/databrickslabs/ontos).
-The Data Steward's pull request approval is the business sign-off. No secret is stored
-anywhere: the pipelines sign in with workload identity federation.
+**The pipeline decides, the Data Steward signs, Unity Catalog enforces.**
 
-> "Azure DevOps decides, the Data Steward signs, Unity Catalog enforces."
+[![Licence: Apache 2.0](https://img.shields.io/badge/licence-Apache%202.0-blue)](LICENSE)
+[![ODCS 3.1.0](https://img.shields.io/badge/ODCS-3.1.0-informational)](https://bitol-io.github.io/open-data-contract-standard/)
+[![ODPS v1.0.0](https://img.shields.io/badge/ODPS-v1.0.0-informational)](https://bitol-io.github.io/open-data-product-standard/)
 
-```text
-Data Producer edits a contract or product file on a branch
-  -> pull request to main
-  -> contract CI: ODCS lint, mandatory fields, products and domains (blocking),
-     quality checks (advisory), pipeline rules (blocking only when a rule does not run)
-  -> Data Stewards for the product approve (required reviewer)
-  -> merge
-  -> product bundle deploy, dev then prod (approval): builds the objects and applies
-     the contract's row-level rules as Lakeflow expectations
-  -> publish pipeline, as the publisher identity, per environment:
-       Unity Catalog: governed tags, comments, contract properties, grants
-     and once, in the Ontos environment:
-       Ontos: domains and teams, contracts (version, status, quality results),
-              data products (status behind gates, certification, Certified badge)
+Data contracts (ODCS) and data products (ODPS) live in git. A pull request is the change request,
+contract CI enforces the standard, and the Data Steward's approval is the sign-off. After the
+merge, pipelines build the product on Databricks with the contract's quality rules as Lakeflow
+expectations, then make Unity Catalog and [Ontos](https://github.com/databrickslabs/ontos) match
+what was approved. No secret is stored anywhere: the pipelines sign in with workload identity
+federation.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/how-it-works-dark.svg">
+  <img alt="The four lanes: create a contract, review and approve it in a pull request, build the product with the rules embedded, publish to Unity Catalog and Ontos. Below, the lifecycle from draft G1 to active G4." src="docs/assets/how-it-works.svg" width="100%">
+</picture>
+
+**[Read how it works, step by step](docs/how-it-works.md)**
+
+## Why governance as code
+
+Most data governance plans describe stewardship, standards and quality as policy: a document says
+every dataset has an owner, changes are approved and access matches the agreement. Whether that
+happens depends on people remembering to do it. Here each of those statements is a check or a
+pipeline step. A change that breaks the standard cannot merge, an approval is recorded on the pull
+request, and Unity Catalog and Ontos are set from `main`, so what runs is always what was signed.
+Git keeps the audit trail for free.
+
+## Governance on paper vs governance as code
+
+| The policy says | What enforces it here |
+|---|---|
+| Every dataset has an accountable Data Steward and Business Data Owner | `dpi check-mandatory` fails the pull request until both are named in the contract |
+| Changes are approved by the business | The product's Stewards group is a required reviewer on its folders; a direct push to `main` is refused |
+| Data meets its quality rules | The contract's rules run as Lakeflow expectations in the product's pipeline; severity decides keep, drop or fail |
+| The catalogue describes what is really there | Publish fails on schema drift between an object and its contract |
+| Access matches the agreement | Publish makes the grants match the access file and revokes anything not listed |
+| Every dataset is classified | Governed tags for tier, domain, status and sensitivity come from the contract, never by hand |
+| Products are certified before people rely on them | The product reaches `active` (G4) only when its contracts are active and its objects exist; certification sets the Certified badge |
+
+## How it works
+
+1. **[Create](docs/how-it-works.md#1-create).** A Data Producer writes the ODCS contract, its
+   access file and the ODPS product file on a branch of `data-contracts`, or starts from the
+   template with `dpi new-product`, and opens a pull request.
+2. **[Review and approve](docs/how-it-works.md#2-review-and-approve).** Contract CI runs
+   `datacontract lint`, `dpi check-mandatory`, `dpi check-products` and `dpi check-expectations`
+   (blocking) and `datacontract test` (advisory). The product's Data Stewards approve, and the
+   change merges.
+3. **[Build with the rules embedded](docs/how-it-works.md#3-build-with-the-rules-embedded).** The
+   product's Databricks Asset Bundle deploys to dev, then to prod after an approval. The merged
+   contract travels with it, and `@rules.apply(...)` turns each row-level rule into an expectation.
+4. **[Publish and sync](docs/how-it-works.md#4-publish-and-sync).** As the publisher identity, the
+   publish pipeline sets comments, governed tags, contract properties and grants in Unity Catalog,
+   then syncs domains, contract versions, quality results and data products to Ontos, through the
+   gates G1 to G4.
+
+## Quality rules become pipeline expectations
+
+The rules live in the contract, so a rule changes only through a pull request the Stewards
+approve. The pipeline code holds none.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/contract-to-expectation-dark.svg">
+  <img alt="Contract rules and the Lakeflow expectations they become: required true becomes IS NOT NULL, invalidValues becomes IN the valid values, an expectation custom property is applied as written. Severity warning keeps the row, error drops it, critical fails the update." src="docs/assets/contract-to-expectation.svg" width="100%">
+</picture>
+
+In the contract:
+
+```yaml
+quality:
+  - type: sql
+    name: as_run_ends_after_start
+    query: SELECT count(*) FROM ${object} WHERE actual_end <= actual_start
+    mustBe: 0
+    severity: warning
+    customProperties:
+      - property: expectation
+        value: actual_end > actual_start
 ```
 
-This covers Tier 2: domain data products, where the product's Stewards approve changes in the
-pull request and Ontos is the registration and display copy. Tier 1 (enterprise products, with
-a Business Data Owner sign-off in Ontos) is a separate path and is not part of this repository.
+In the pipeline, a dataset only needs the decorator:
 
-## What is in this repository
+```python
+rules = ContractExpectations.from_file(spark.conf.get("contract_path"))
 
-Each top-level folder becomes its own Azure DevOps repository.
+@dp.materialized_view(name="fct_linear_as_run_event", table_properties=rules.table_properties())
+@rules.apply("fct_linear_as_run_event")
+def fct_linear_as_run_event():
+    ...
+```
 
-| Folder | What it is | Owned by |
-|---|---|---|
-| [`dp-integration/`](dp-integration/README.md) | The shared tooling: the `dpi` Python package, the Azure DevOps pipeline templates, the configuration and the one-off setup scripts | Platform team |
-| [`data-contracts/`](data-contracts/README.md) | The contracts and access files, the data product files, the domain registry and two small pipeline files | Data Producers and Stewards |
-| [`dp-content/`](dp-content/README.md) | An example product bundle: a Lakeflow pipeline, a build job and a metric view for the `content` product | Data Producers |
-| [`docs/`](docs/README.md) | The install guide, step by step, and the reference pages | |
-| `scripts/split-repos.sh` | Turns the three folders into three Git repositories for Azure DevOps | |
-| `scripts/check-text.py` | Text checks CI runs on every file: no em-dash or en-dash, no Databricks token | |
+More: [Data products, bundles and pipeline rules](docs/15-data-products-bundles-and-pipeline-rules.md).
 
-The example domain, contracts and product use synthetic data: a content catalogue and a
-two-week linear schedule on placeholder channels.
-
-## Try it on your machine
+## Try it in five minutes
 
 The unit tests and the contract checks need no cloud access. With Python 3.11 or later:
 
@@ -61,12 +111,23 @@ dpi check-mandatory contracts/*/*.odcs.yaml
 dpi check-products products/*/*.odps.yaml
 ```
 
-Then try a failing change, for example remove the Data Steward from `team` in
-`contracts/content/content-catalogue.odcs.yaml` and run `dpi check-mandatory` again.
+Then try a failing change: remove the Data Steward from `team` in
+`contracts/content/content-catalogue.odcs.yaml` and run `dpi check-mandatory` again. That is the
+check that stops the pull request.
 
-## Install it
+## Adopt it in your organisation
 
-You need:
+**Start a data product from the template.** From a `data-contracts` checkout:
+
+```bash
+dpi new-product --domain content --product sample-orders
+```
+
+It writes the contract, the access file and the product file at `draft` (G1), and a bundle for
+the product, all passing the blocking checks as they stand. Replace the `<placeholder>` values and
+open the first pull request. See [Start a new data product](docs/16-start-a-new-data-product.md).
+
+**Install the platform.** You need:
 
 - An Azure subscription and a resource group for the publisher identity.
 - An Azure Databricks Premium workspace with Unity Catalog, a serverless SQL warehouse,
@@ -87,13 +148,44 @@ Follow the [install guide](docs/README.md). In short:
 5. Create the pipelines and the branch policies in Azure DevOps.
 6. Prove the install with the [verification scenarios](docs/12-verify-the-install.md).
 
+**What you can change without touching code:** tag names, group names and grant behaviour in
+`dp-integration/config/platform.yaml`; hosts, ids and service connections per environment in
+`config/environments/`; the business domains in `data-contracts/domains/domains.yaml`.
+
+## Scope and roadmap
+
+This covers Tier 2: domain data products, where the product's Stewards approve changes in the pull
+request and Ontos is the registration and display copy. Azure DevOps is the reference CI; the
+pattern itself does not depend on it, since every check is a `dpi` command.
+
+Next:
+
+- **GitHub Actions** equivalents of the four pipelines.
+- **Tier 1** enterprise products, with a Business Data Owner sign-off in Ontos.
+- **A neutral example domain** alongside the current content example.
+
+## Repository layout
+
+Each of the first three folders becomes its own Azure DevOps repository.
+
+| Folder | What it is | Owned by |
+|---|---|---|
+| [`dp-integration/`](dp-integration/README.md) | The shared tooling: the `dpi` Python package, the product template, the Azure DevOps pipeline templates, the configuration and the one-off setup scripts | Platform team |
+| [`data-contracts/`](data-contracts/README.md) | The contracts and access files, the data product files, the domain registry and two small pipeline files | Data Producers and Stewards |
+| [`dp-content/`](dp-content/README.md) | The worked example product bundle: a Lakeflow pipeline, a build job and a metric view for the `content` product | Data Producers |
+| [`docs/`](docs/README.md) | How it works, the install guide step by step, and the reference pages | |
+| `scripts/split-repos.sh` | Turns the three folders into three Git repositories for Azure DevOps | |
+| `scripts/check-text.py` | Text checks CI runs on every file: no em-dash or en-dash, no Databricks token | |
+| `scripts/build-diagrams.py` | Builds the infographics in `docs/assets/` | |
+
+The example domain, contracts and product use synthetic data: a content catalogue and a
+two-week linear schedule on placeholder channels.
+
 ## Versions
 
 Verified with Databricks CLI 1.18, Ontos v1.0.2, datacontract-cli 1.2.7 and databricks-sdk
 0.151.0, on Microsoft-hosted `ubuntu-latest` agents. `dp-integration/pyproject.toml` pins the
 Python packages, so every pipeline run uses the same versions.
-
-## Continuous integration
 
 `.github/workflows/ci.yml` runs the unit tests and the contract checks on every push and pull
 request to this repository. Once installed, the Azure DevOps pipelines in each folder are the
