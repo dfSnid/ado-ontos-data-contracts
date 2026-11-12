@@ -40,6 +40,7 @@ Each top-level folder becomes its own Azure DevOps repository.
 | [`dp-content/`](dp-content/README.md) | An example product bundle: a Lakeflow pipeline, a build job and a metric view for the `content` product | Data Producers |
 | [`docs/`](docs/README.md) | The install guide, step by step, and the reference pages | |
 | `scripts/split-repos.sh` | Turns the three folders into three Git repositories for Azure DevOps | |
+| `scripts/check-text.py` | Text checks CI runs on every file: no em-dash or en-dash, no Databricks token | |
 
 The example domain, contracts and product use synthetic data: a content catalogue and a
 two-week linear schedule on placeholder channels.
@@ -97,6 +98,11 @@ Python packages, so every pipeline run uses the same versions.
 `.github/workflows/ci.yml` runs the unit tests and the contract checks on every push and pull
 request to this repository. Once installed, the Azure DevOps pipelines in each folder are the
 ones that govern changes.
+
+## Contributing and security
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the checks to run before a pull request, and
+[SECURITY.md](SECURITY.md) to report a vulnerability privately.
 
 ## Licence
 
