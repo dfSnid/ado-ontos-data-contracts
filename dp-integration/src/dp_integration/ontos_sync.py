@@ -1,7 +1,7 @@
-"""Register Tier 2 data contracts in Ontos.
+"""Register data contracts in Ontos.
 
-At Tier 2 the Data Steward's PR approval is the gate, so Ontos is the registration and display
-copy only. A contract is found in Ontos by its id (kept as a custom property, sourceId by
+The Data Steward's PR approval is the gate, so Ontos is the registration and display copy
+only. A contract is found in Ontos by its id (kept as a custom property, sourceId by
 default) and version:
 
 - the first version is imported;

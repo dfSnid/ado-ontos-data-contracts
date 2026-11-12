@@ -55,7 +55,7 @@ A value still in `<...>` form counts as unset. Each setup script reads only the 
 | `publisherCatalogs` | Setup | Space-separated catalogs the publisher manages in this environment |
 | `publisherDeploysBundles` | Setup | `'true'` lets the publisher identity deploy product bundles too (decision 9) |
 | `ontosAppName`, `ontosLakebaseProject`, `ontosAppCatalog` | Setup | Names for the Ontos app, its Lakebase project and its file catalog |
-| `demoCatalog` | Setup | Catalog for the synthetic demo tables (skip them with `SKIP_DEMO_TABLES=1`) |
+| `demoCatalog` | Setup | The example product's catalog, created by `bootstrap.sh` (skip it with `SKIP_DEMO_CATALOG=1`) |
 
 Full listing: [`dp-integration/config/environments/example.yml`](../dp-integration/config/environments/example.yml)
 

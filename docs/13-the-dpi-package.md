@@ -54,7 +54,7 @@
 import logging
 log = logging.getLogger(__name__)
 
-log.error("missing a named Data Steward", extra={"source": "contracts/content/x.odcs.yaml", "line": 22})
+log.error("missing a named Data Steward", extra={"source": "contracts/sales/orders.odcs.yaml", "line": 23})
 ```
 
 ## Extend it
@@ -72,7 +72,7 @@ ws = WorkspaceClient(profile="<workspace-profile>")
 publisher = UnityCatalogPublisher(
     ws, StatementRunner(ws, settings.env.warehouse_id, dry_run=True),
     settings.tags, settings.contract, settings.grants, settings.env.contract_server, dry_run=True)
-publisher.publish(DataContract.from_file("contracts/content/content-catalogue.odcs.yaml"))
+publisher.publish(DataContract.from_file("contracts/sales/orders.odcs.yaml"))
 ```
 
 ### Inject a fake in a test

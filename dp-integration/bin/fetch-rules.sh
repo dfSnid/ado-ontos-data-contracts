@@ -5,7 +5,7 @@
 # Usage:
 #   fetch-rules.sh <manifest> <data-contracts checkout> [<dp-integration checkout>]
 #
-# <manifest> is a file in the bundle (dp-content: src/pipeline/contracts.txt) with one contract
+# <manifest> is a file in the bundle (dp-orders: src/pipeline/contracts.txt) with one contract
 # path per line, relative to the data-contracts root; # starts a comment. The contracts go to
 # contracts/ beside the manifest, and the module to contract_expectations.py beside it. The
 # bundle git-ignores both and lists them under sync.include. templates/bundle-deploy.yml runs

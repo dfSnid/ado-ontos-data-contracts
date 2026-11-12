@@ -1,6 +1,6 @@
-# Deploy the content bundle after merge: dev first, then prod once the content-prod
-# Environment's approval is given. The contracts repository's publish pipeline runs when this
-# one completes, so the Unity Catalog metadata is applied to what was just built.
+# Deploy the orders bundle after merge: dev first, then prod once the orders-prod
+# Environment's approval is given. The data-contracts publish pipeline runs when this one
+# completes, so the Unity Catalog metadata is applied to what was just built.
 #
 # The pipeline applies the rules of the contracts in src/pipeline/contracts.txt, so a merged
 # change to one of them redeploys too (the contracts trigger). Keep its paths and the manifest
@@ -32,7 +32,7 @@ resources:
             - main
         paths:
           include:
-            - contracts/content/content-linear.odcs.yaml
+            - contracts/sales/orders.odcs.yaml
 
 extends:
   template: templates/bundle-deploy.yml@integration
@@ -41,7 +41,7 @@ extends:
     environments:
       - environment: dev          # config/environments/dev.yml in dp-integration
         target: dev               # databricks.yml target
-        adoEnvironment: content-dev
+        adoEnvironment: orders-dev
       - environment: prod
         target: prod
-        adoEnvironment: content-prod    # add the Approvals check here
+        adoEnvironment: orders-prod    # add the Approvals check here

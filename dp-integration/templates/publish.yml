@@ -1,4 +1,4 @@
-# Publish Tier 2 data contracts and data products after merge to main.
+# Publish data contracts and data products after merge to main.
 # The Steward's PR approval was the gate, so this only applies what main says. In each
 # environment, in order (dev, then prod), with step 3 in the Ontos environment only:
 #   1. quality checks (advisory: results go to Ontos, they never fail the run)

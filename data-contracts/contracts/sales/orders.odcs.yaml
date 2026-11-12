@@ -1,0 +1,129 @@
+# Orders: data contract for the Orders data product, built by the dp-orders bundle.
+# The example data is samples.tpch.orders, which every Databricks workspace has.
+# The status moves with the gates: draft (G1), proposed (G2), approved (G3, objects may not exist
+# yet), active (G4, after the bundle has built them). The sales Data Stewards approve each PR.
+apiVersion: v3.1.0
+kind: DataContract
+id: orders
+name: Orders
+version: 1.0.0
+status: active
+domain: sales
+dataProduct: orders
+
+description:
+  purpose: One row per customer order, with its status, value and priority, for sales reporting.
+  usage: Query sales_prod.orders.orders. Join to a customer table on customer_id.
+  limitations: Built from the TPC-H sample data, so the customers and amounts are not real.
+
+# CI fails without a named Business Data Owner and Data Steward.
+team:
+  name: Sales
+  members:
+    - username: sales.owner@example.com
+      role: Business Data Owner
+    - username: sales.steward@example.com
+      role: Data Steward
+
+# One server per environment. Publish only touches the environments listed here, and the bundle's
+# targets use the same catalogs.
+servers:
+  - server: dev
+    type: databricks
+    environment: dev
+    host: adb-0000000000000000.0.azuredatabricks.net   # your workspace host
+    catalog: sales_dev
+    schema: orders
+  - server: prod
+    type: databricks
+    environment: prod
+    host: adb-0000000000000000.0.azuredatabricks.net   # your workspace host
+    catalog: sales_prod
+    schema: orders
+
+schema:
+  - name: orders
+    physicalName: orders
+    physicalType: materialized_view
+    logicalType: object
+    businessName: Order
+    description: One row per order a customer placed.
+    properties:
+      # Publish fails if the built object's columns differ from this list, so keep it in step
+      # with the pipeline code. `required: true` becomes an IS NOT NULL expectation (warns).
+      - name: order_id
+        logicalType: integer
+        physicalType: BIGINT
+        primaryKey: true
+        required: true
+        unique: true
+        description: Order number.
+      - name: customer_id
+        logicalType: integer
+        physicalType: BIGINT
+        description: The customer who placed the order.
+        quality:
+          # Becomes the expectation `customer_id IS NOT NULL`. severity: error drops the row,
+          # so an order with no customer never reaches the table.
+          - type: library
+            metric: nullValues
+            mustBe: 0
+            dimension: completeness
+            severity: error
+      - name: order_status
+        logicalType: string
+        physicalType: STRING
+        required: true
+        description: F (fulfilled), O (open) or P (partly fulfilled).
+        quality:
+          # Becomes the expectation `order_status IS NULL OR order_status IN ('F', 'O', 'P')`.
+          # severity: warning keeps and counts the row.
+          - type: library
+            metric: invalidValues
+            arguments:
+              validValues: [F, O, P]
+            mustBe: 0
+            dimension: conformity
+            severity: warning
+      - name: total_price
+        logicalType: number
+        physicalType: DECIMAL(18,2)
+        required: true
+        description: Order value.
+      - name: order_date
+        logicalType: date
+        physicalType: DATE
+        required: true
+        description: The date the order was placed.
+      - name: order_priority
+        logicalType: string
+        physicalType: STRING
+        description: Priority, from 1-URGENT to 5-LOW.
+    quality:
+      # A whole-table rule: datacontract test runs the count, and the `expectation` custom
+      # property applies the same rule row by row in the pipeline.
+      - type: sql
+        name: total_price_positive
+        description: Every order is worth more than zero.
+        query: SELECT count(*) FROM ${object} WHERE total_price <= 0
+        mustBe: 0
+        dimension: accuracy
+        severity: warning
+        customProperties:
+          - property: expectation
+            value: total_price > 0
+
+slaProperties:
+  - property: freshness
+    value: 24
+    unit: h
+    description: Refreshed at least daily (advisory).
+
+# CI fails without these three.
+customProperties:
+  - property: governanceTier
+    value: 2           # 2 = domain: the domain's Data Stewards sign off (see tags.tier_values)
+  - property: securityClassification
+    value: internal    # public, internal, confidential or restricted
+  - property: containsPii
+    value: false

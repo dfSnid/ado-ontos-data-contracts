@@ -1,6 +1,6 @@
 """Quality results from `datacontract test --output-format json`, one item per dimension.
 
-At Tier 2 the checks are advisory: the results are shown in Ontos, they never fail a run.
+The checks are advisory: the results are shown in Ontos, they never fail a run.
 """
 from __future__ import annotations
 
@@ -55,7 +55,7 @@ class QualityResults(Mapping[tuple[str, str], list[QualityItem]]):
             items[(str(run["dataContractId"]), str(run["dataContractVersion"]))] = [
                 QualityItem(title=f"datacontract test: {dimension}",
                             description=f"Run {run.get('runId')} on server {run.get('server')}, "
-                                        f"result {run.get('result')} (advisory at Tier 2)",
+                                        f"result {run.get('result')} (advisory)",
                             dimension=dimension, checks_passed=sum(results),
                             checks_total=len(results), measured_at=str(run.get("timestampEnd") or ""))
                 for dimension, results in sorted(by_dimension.items())]

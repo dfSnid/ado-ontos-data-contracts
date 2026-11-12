@@ -2,15 +2,14 @@
 
 ## Add a data product
 
-1. Create `contracts/<domain>/<product>.odcs.yaml` and `<product>.access.yaml` in `data-contracts`, on a branch, at `draft`.
-2. Create `products/<domain>/<product>.odps.yaml` with one output port per contract, each at the contract's version.
-3. Create an Azure DevOps Stewards group for the product and add the required-reviewer policy for its folders (step 8).
-4. If the objects are in a catalog the publisher does not manage yet, add it to `publisherCatalogs` and re-run `setup/publisher-identity.sh`.
-5. Open the pull request. Contract CI, the Steward's approval and the merge publish it.
-6. Create the product's bundle repository from `dp-content`: change `databricks.yml`, the resources, the code and `pipelines/deploy.yml`. If its pipeline applies contract rules, list the contracts in `contracts.txt` and in the deploy's `contracts` trigger paths.
-7. Create its ADO Environments and deploy pipeline, permit the three repositories, and run it once (step 7, part 6).
-8. Only then add it to the `pipelines` resources of `data-contracts/pipelines/publish.yml`.
-9. Move the contract and product to `approved`, then `active`, through pull requests, as in the order of a change on [Data products, bundles and pipeline rules](15-data-products-bundles-and-pipeline-rules.md).
+1. On a branch of `data-contracts`, run `dpi new-product --domain <domain> --product <product>`. It writes the contract, the access file and the product file at `draft`, and the product's bundle beside the checkout ([Start a new data product](16-start-a-new-data-product.md)).
+2. Create an Azure DevOps Stewards group for the product and add the required-reviewer policy for its folders (step 8).
+3. If the objects are in a catalog the publisher does not manage yet, add it to `publisherCatalogs` and re-run `setup/publisher-identity.sh`.
+4. Open the pull request. Contract CI, the Steward's approval and the merge publish it.
+5. Push the generated `dp-<product>` folder as the product's bundle repository, with its own code in `src/pipeline/`. If its pipeline applies more contracts' rules, list them in `contracts.txt` and in the deploy's `contracts` trigger paths.
+6. Create its ADO Environments and deploy pipeline, permit the three repositories, and run it once (step 7, part 6).
+7. Only then add it to the `pipelines` resources of `data-contracts/pipelines/publish.yml`.
+8. Move the contract and product to `approved`, then `active`, through pull requests, as in the order of a change on [Data products, bundles and pipeline rules](15-data-products-bundles-and-pipeline-rules.md).
 
 ## Add a domain
 
@@ -35,7 +34,7 @@
 | Ontos v1.0.2 | The clone tag in step 6 | Test a new release on a non-production app first: the version workaround below may no longer be needed |
 | `datacontract-cli`, `databricks-sdk` | `pyproject.toml` | Change the range, run the tests, merge |
 | Python | `pythonVersion` in the environment file | 3.11 or later |
-| Agent image | `vmImage` in the environment file | Microsoft moves `ubuntu-latest` to a new Ubuntu from 19 October 2026. Pin `ubuntu-24.04` if you want to move on your own schedule |
+| Agent image | `vmImage` in the environment file | Microsoft moves `ubuntu-latest` to each new Ubuntu LTS. Pin a version such as `ubuntu-24.04` to move on your own schedule |
 
 ## Known Ontos v1.0.2 behaviour
 

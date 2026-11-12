@@ -2,7 +2,7 @@
 
 ## The idea in one line
 
-"Azure DevOps decides, the Data Steward signs, Unity Catalog enforces." At Tier 2 the Steward signs by approving the pull request, so Ontos is the registration and display copy only. Tier 1 (Business Data Owner sign-off in Ontos) is a separate path and is not part of this install.
+"Azure DevOps decides, the Data Steward signs, Unity Catalog enforces." The Steward signs by approving the pull request, so Ontos is the registration and display copy only. Products that also need a Business Data Owner sign-off (governance tier 1, enterprise) are not covered yet: `dpi check-mandatory` rejects a contract at tier 1.
 
 ## Components
 
@@ -10,7 +10,7 @@
 |---|---|---|
 | `data-contracts` repository | ODCS 3.1.0 contracts and their access files under `contracts/<domain>/`, ODPS product files under `products/<domain>/`, the domain registry `domains/domains.yaml`, and two small pipeline files that call the shared templates. | Data Producers and Stewards; the registry with the platform team |
 | `dp-integration` repository | The shared tooling: the `dpi` Python package, the pipeline templates (including the bundle deploy), the configuration and the one-off setup scripts. | Platform team |
-| Product bundle repository, for example `dp-content` | A Databricks Asset Bundle that builds the objects one product's contract names: a Lakeflow pipeline, a build job and a metric view. Its deploy pipeline extends the shared bundle-deploy template. | Data Producers |
+| Product bundle repository, for example `dp-orders` | A Databricks Asset Bundle that builds the objects one product's contract names: a Lakeflow pipeline and a build job, and optionally metric views. Its deploy pipeline extends the shared bundle-deploy template. | Data Producers |
 | Contract CI pipeline | Pull request build validation on `data-contracts/main`. | Platform team |
 | Publish pipeline | Runs after every merge that changes a contract, product file or the registry, and after every bundle deploy. | Platform team |
 | Bundle deploy pipeline | One per product bundle. Deploys and builds in dev, then in prod behind an Azure DevOps Environment approval. | Platform team (template), Data Producers (bundle) |
@@ -59,8 +59,8 @@ Objects can be tables, materialized views (`physicalType: materialized_view`) or
 
 ## Out of scope
 
-These belong to Tier 1 and are deliberately not built: Business Data Owner sign-off in Ontos, the approval checker and evidence store, Ontos webhooks back to Azure DevOps, blocking quality checks in CI, and ABAC policies.
+These are deliberately not built: Business Data Owner sign-off in Ontos for enterprise (tier 1) products, the approval checker and evidence store, Ontos webhooks back to Azure DevOps, blocking quality checks in CI, and ABAC policies.
 
 ## Proven end to end
 
-All six demo scenarios passed, and the Content product went through its gates to active and certified. The evidence and how to repeat it are on [Verify the install](12-verify-the-install.md).
+Nine scenarios prove an install, and the example product goes through its gates to active and certified. The steps are on [Verify the install](12-verify-the-install.md).

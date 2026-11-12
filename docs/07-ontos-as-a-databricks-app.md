@@ -5,7 +5,7 @@
 Ontos is the data contract and data product registry. The pipeline writes each domain, contract version, data product and the quality results there for people to browse. `setup/ontos.sh` deploys Ontos v1.0.2 as a Databricks App with a Lakebase database, then gives the publisher identity its own Ontos role. It is safe to re-run.
 
 > [!NOTE]
-> Ontos is display only at Tier 2. The pull request approval is the signature, and Unity Catalog enforces access. If Ontos is down, publishing fails at the Ontos step after Unity Catalog is already up to date. Re-run the pipeline when Ontos is back.
+> Ontos is display only. The pull request approval is the signature, and Unity Catalog enforces access. If Ontos is down, publishing fails at the Ontos step after Unity Catalog is already up to date. Re-run the pipeline when Ontos is back.
 
 ## 1. Build the Ontos frontend once
 

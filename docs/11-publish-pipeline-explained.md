@@ -49,20 +49,20 @@ dpi -c ../dp-integration/config -e <env> publish-uc --dry-run --profile <workspa
 
 Each contract has an access file next to it with the same name and `.access.yaml`. It lists account groups, privileges and objects:
 
-`contracts/content/content-catalogue.access.yaml`
+`contracts/sales/orders.access.yaml`
 
 ```yaml
-# Access for the Content catalogue data product. Applied by the publish job after merge.
-# Grants are declarative: the publish job adds what is listed and removes anything else
-# on these objects (object owners are never touched). Never grant by hand.
-contract: content-catalogue
+# Access for the Orders contract. Applied by the publish pipeline after merge, in every
+# environment the contract has a server for. This is the full list of direct grants on the
+# contract's objects: publish revokes anything else. Never grant by hand.
+contract: orders
 grants:
-  - principal: dp-content-consumers
+  - principal: dp-sales-consumers
     privileges: [SELECT]
-    objects: [title, episode]
-  - principal: dp-content-stewards
+    objects: [orders]
+  - principal: dp-sales-stewards
     privileges: [SELECT]
-    objects: [title, episode]
+    objects: [orders]
 ```
 
 ## dpi sync-domains
@@ -104,7 +104,7 @@ A second run with nothing changed only re-sets the tags, which is harmless. In t
 `data-contracts/pipelines/publish.yml`
 
 ```yaml
-# Publish after merge: the Steward's PR approval is the Tier 2 gate, so main is what gets applied.
+# Publish after merge: the Steward's PR approval is the sign-off, so main is what gets applied.
 # Also runs when a data product's bundle deploy completes, so the metadata is applied to the
 # objects the deploy just built (G3 to G4).
 trigger:
@@ -126,9 +126,9 @@ resources:
       ref: refs/heads/main
   pipelines:
     # One entry per data product bundle; source is the ADO pipeline name.
-    - pipeline: content_deploy
-      source: dp-content-deploy
-      project: <ado-project>             # the project that holds dp-content
+    - pipeline: orders_deploy
+      source: dp-orders-deploy
+      project: <ado-project>             # the project that holds dp-orders
       trigger:
         branches:
           include:

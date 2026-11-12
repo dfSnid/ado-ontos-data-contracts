@@ -90,8 +90,8 @@ sequenceDiagram
     ADO->>ADO: Merge to main
 ```
 
-The Steward's approval is the Tier 2 sign-off. The publish pipeline runs only on `main`, so it never
-asks again. Details: [Contract CI pipeline explained](09-contract-ci-pipeline-explained.md) and
+The Steward's approval is the sign-off. The publish pipeline runs only on `main`, so it never asks
+again. Details: [Contract CI pipeline explained](09-contract-ci-pipeline-explained.md) and
 [Branch policies](10-branch-policies.md).
 
 ## 3. Build with the rules embedded
@@ -136,9 +136,9 @@ In the pipeline code a dataset only needs the decorator:
 ```python
 rules = ContractExpectations.from_file(spark.conf.get("contract_path"))
 
-@dp.materialized_view(name="dim_content_current", table_properties=rules.table_properties())
-@rules.apply("dim_content_current")
-def dim_content_current():
+@dp.materialized_view(name="orders", table_properties=rules.table_properties())
+@rules.apply("orders")
+def orders():
     ...
 ```
 
@@ -222,7 +222,7 @@ set it. Before `under_review`, every port contract must be registered in Ontos.
 
 Ontos is the display copy. People read it; the publisher identity writes it. Approval happens in
 the pull request, so a contract or product in Ontos moves only after a Steward approved the
-change in git. The screens below are from a sandbox install with the synthetic example. The
+change in git. The screens below are from a test install with the example Orders product. The
 publisher identity's id is replaced with `publisher-identity`.
 
 ### The contracts list

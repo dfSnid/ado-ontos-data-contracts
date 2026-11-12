@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Deploy Ontos as a Databricks App and let the publisher identity use it. Safe to re-run.
 #
-# Ontos is the registration and display copy for Tier 2 contracts. The publish pipeline writes
+# Ontos is the registration and display copy for the contracts. The publish pipeline writes
 # to it as the publisher identity, which reaches Ontos through the dp-publishers group mapped
 # to its own "Contract Publisher" role.
 #

@@ -70,7 +70,7 @@ def test_owner_team_keeps_the_contract_visible_to_the_publisher(settings, write_
     ontos = FakeOntos()
     team = ontos.create_team({"name": "sample-domain"})
     ontos.publisher_member_of = team["id"]
-    sync = OntosContractSync(ontos, settings.ontos, {"content": OwnerTeam("sample-domain", team["id"])})
+    sync = OntosContractSync(ontos, settings.ontos, {"sales": OwnerTeam("sample-domain", team["id"])})
     first = sync.sync(DataContract.from_file(write_contract(status="proposed")))
     assert ontos.contracts[first["id"]]["owner_team_id"] == team["id"]
     second = sync.sync(DataContract.from_file(write_contract(status="approved")))
@@ -81,7 +81,7 @@ def test_owner_team_keeps_the_contract_visible_to_the_publisher(settings, write_
 
 
 def test_without_an_owner_team_a_proposed_contract_is_imported_again(settings, write_contract, caplog):
-    # What happened in publish run 28: the publisher could not see its own proposed contract.
+    # Without an owner team, the publisher cannot see its own proposed contract in Ontos.
     ontos = FakeOntos()
     ontos.publisher_member_of = ontos.create_team({"name": "sample-domain"})["id"]
     sync = OntosContractSync(ontos, settings.ontos, {"other": OwnerTeam("other-domain", "t-x")})
@@ -96,7 +96,7 @@ def test_role_mapper(settings):
     ontos.roles = [{"id": "r1", "name": "Data Steward", "assigned_groups": ["data-stewards", "dp-publishers"]},
                    {"id": "r2", "name": "Admin", "assigned_groups": ["admins"]}]
     result = OntosRoleMapper(ontos, settings.ontos).apply()
-    assert result["Data Steward"] == ["data-stewards", "dp-content-stewards"]
+    assert result["Data Steward"] == ["data-stewards", "dp-sales-stewards"]
     assert result["Contract Publisher"] == ["dp-publishers"]
     assert result["Admin"] == ["admins"]
     assert OntosRoleMapper(ontos, settings.ontos).apply() == result  # idempotent

@@ -1,4 +1,4 @@
-# Contract CI for Tier 2 data products. Used as PR build validation on data-contracts.
+# Contract CI for data products. Used as PR build validation on data-contracts.
 # Blocking: ODCS lint, the mandatory-field check, and the product check (data product files,
 # the domain registry, port contracts and versions, status against the contracts).
 # Advisory: quality checks against Databricks. They warn, never fail ("Always Proceed"). One
@@ -97,10 +97,10 @@ stages:
                   for f in contracts/**/*.odcs.yaml; do
                     grep -q "^  - server: $(contractServer)\$" "$f" || continue   # not deployed here
                     if ! datacontract test --server '$(contractServer)' "$f" --output "$(Common.TestResultsDirectory)/quality/$(basename "$f").xml" --output-format junit > out.txt 2>&1; then
-                      echo "##vso[task.logissue type=warning;sourcepath=$f]Quality checks failed for $f (advisory at Tier 2)"
+                      echo "##vso[task.logissue type=warning;sourcepath=$f]Quality checks failed for $f (advisory)"
                     fi
                     cat out.txt
-                    grep -q 'has warnings' out.txt && echo "##vso[task.logissue type=warning;sourcepath=$f]Quality warnings for $f (advisory at Tier 2)"
+                    grep -q 'has warnings' out.txt && echo "##vso[task.logissue type=warning;sourcepath=$f]Quality warnings for $f (advisory)"
                   done
                   exit 0
             - task: AzureCLI@2

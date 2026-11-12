@@ -53,7 +53,7 @@ stages:
                     grep -q "^  - server: $(contractServer)\$" "$f" || continue   # not deployed here
                     datacontract test --server '$(contractServer)' "$f" \
                       --output "$(qualityDir)/$(basename "$f").json" --output-format json \
-                      || echo "##vso[task.logissue type=warning;sourcepath=$f]Quality checks failed for $f (advisory at Tier 2)"
+                      || echo "##vso[task.logissue type=warning;sourcepath=$f]Quality checks failed for $f (advisory)"
                   done
                   echo '${{ parameters.environment }}' > "$(qualityDir)/.environment"   # never an empty artifact
                   exit 0

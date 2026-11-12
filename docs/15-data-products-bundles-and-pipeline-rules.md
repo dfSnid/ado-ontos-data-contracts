@@ -4,36 +4,32 @@
 
 A data product is one file in `data-contracts`, `products/<domain>/<name>.odps.yaml` (ODPS v1.0.0), and one bundle repository that builds its objects. The file lists the product's output ports; each port names a contract by its id and version. The publish pipeline registers the product in Ontos, owned by its domain's team, and moves it with its contracts.
 
-`products/content/content.odps.yaml`
+`products/sales/orders.odps.yaml`
 
 ```yaml
-# Content data product (ODPS v1.0.0). Registered in Ontos by the publish pipeline
-# (dpi sync-products), owned by the content domain team from domains/domains.yaml.
+# Orders data product (ODPS v1.0.0). Registered in Ontos by the publish pipeline
+# (dpi sync-products), owned by the sales domain team.
 # Each output port names a contract by its id and version; the port version must match the
-# contract file. The status moves with the gates, behind checks on the port contracts:
-#   draft (G1), proposed (G2), approved (G3: contracts approved; Ontos passes through
-#   under_review), active (G4: contracts active, objects built by the bundle), then
-#   deprecated, retired.
-# certificationLevel (an Ontos level: Bronze, Silver, Gold) and publicationScope (none, domain,
-# organization, external) need status active. Certification also sets the Certified badge in
-# Unity Catalog. The Content Data Stewards approve every change to this file.
+# contract file. Move the status with the gates: draft (G1), proposed (G2), approved (G3: port
+# contracts approved), active (G4: port contracts active, objects built by dp-orders).
+# certificationLevel (Bronze, Silver or Gold) needs status active, and also sets the Certified
+# badge in Unity Catalog.
 apiVersion: v1.0.0
 kind: DataProduct
-id: content
-name: Content
-version: 1.1.0
+id: orders
+name: Orders
+version: 1.0.0
 status: active
-domain: content
-tenant: dp-contracts
+domain: sales
 description:
-  purpose: Content library and linear schedule data for programming, scheduling and content analytics.
-  usage: Start with the Linear port's metric view for airtime; use the content dimension for detail.
-  limitations: Synthetic example data.
+  purpose: Customer orders, with status, value and priority, for sales reporting.
+  usage: Start with the Orders port, sales_prod.orders.orders.
+  limitations: Built from the TPC-H sample data.
 outputPorts:
-  - name: Linear
-    version: 1.1.0
-    contractId: content-linear
-    description: Current content dimension, linear as-run events and the airtime metric view.
+  - name: Orders
+    version: 1.0.0
+    contractId: orders
+    description: One row per order, with the contract's quality rules applied in the pipeline.
 customProperties:
   - property: governanceTier
     value: 2
@@ -55,13 +51,13 @@ customProperties:
 # its catalogs, which the platform team adds (CI fails until the tag allows it).
 # Changes need a platform owner's review (required reviewer on /domains).
 domains:
-  - name: content
-    description: What the business makes, buys and schedules, from the content library to the linear schedule.
+  - name: sales
+    description: Orders customers place and what they are worth.
     team:
-      name: content-domain
-      title: Content domain team
+      name: sales-domain
+      title: Sales domain team
       # Producers and Stewards own the products; the publisher group lets the pipeline manage them.
-      groups: [dp-content-stewards, dp-content-producers, dp-publishers]
+      groups: [dp-sales-stewards, dp-sales-producers, dp-publishers]
 ```
 
 > [!WARNING]
@@ -97,17 +93,15 @@ A change to a data quality rule is a contract pull request only. After merge, th
 
 ## The product bundle
 
-`dp-content` is the worked example: a Databricks Asset Bundle that builds the Content product's objects. To start a new product, run `dpi new-product` ([Start a new data product](16-start-a-new-data-product.md)), which writes the contract, the product file and a bundle shaped like this one.
+`dp-orders` is the worked example: a Databricks Asset Bundle that builds the Orders product's object from `samples.tpch.orders`. `dpi new-product` wrote it ([Start a new data product](16-start-a-new-data-product.md)); only the query, the columns and the rules were changed.
 
 | Object | Kind | Built by |
 |---|---|---|
-| `dim_content_current` | Materialized view | The Lakeflow pipeline `content-linear` |
-| `fct_linear_as_run_event` | Materialized view | The same pipeline |
-| `mv_linear_airtime` | Metric view | The `content-build` job, after the pipeline refresh |
+| `orders` | Materialized view | The Lakeflow pipeline `orders`, refreshed by the `orders-build` job |
 
 - **It owns the code and the data, never the metadata.** Comments, tags, grants and the Certified badge come from the contract, through publish.
 - **Three targets.** `local` is a personal copy in a prefixed schema; `dev` and `prod` use the catalogs of the contract's `dev` and `prod` servers.
-- **Metadata survives a rebuild.** Comments, tags and grants on a materialized view survive a refresh, a full refresh and a redeploy. The metric view is changed with `ALTER VIEW ... AS`, which keeps them too. `CREATE OR REPLACE` would drop them until the next publish.
+- **Metadata survives a rebuild.** Comments, tags and grants on a materialized view survive a refresh, a full refresh and a redeploy. If you add a metric view, change it with `ALTER VIEW ... AS`, which keeps them too. `CREATE OR REPLACE` would drop them until the next publish.
 - **A pipeline cannot take over a table.** Before the first deploy into a schema that still has the objects as tables, drop them. The next publish puts the metadata back.
 
 ## Pipeline rules from the contract
@@ -126,14 +120,14 @@ Whole-table rules (unique, row counts, a `type: sql` count) are not row-level, s
 ```yaml
 quality:
   - type: sql
-    name: as_run_ends_after_start
-    query: SELECT count(*) FROM ${object} WHERE actual_end <= actual_start
+    name: total_price_positive
+    query: SELECT count(*) FROM ${object} WHERE total_price <= 0
     mustBe: 0
-    dimension: consistency
+    dimension: accuracy
     severity: warning
     customProperties:
       - property: expectation
-        value: actual_end > actual_start
+        value: total_price > 0
 ```
 
 | `severity` | Pipeline action |
@@ -151,15 +145,15 @@ quality:
 
 Contract CI tries each rule against the built objects first (`dpi check-expectations`), so a rule that does not run fails the pull request, not the next pipeline update.
 
-`src/pipeline/content_linear.py`
+`src/pipeline/orders.py`
 
 ```python
-"""Lakeflow pipeline: the two datasets of the content-linear contract, with the contract's rules.
+"""Lakeflow pipeline: the datasets of the orders contract, with the contract's rules.
 
-Synthetic example data: the dimension is the content catalogue, the fact is a deterministic two-week
-linear schedule over channels ch1 to ch3. The rules are not written here. The deploy copies the
-merged contract and contract_expectations.py (from dp-integration) next to this file, and
-`rules.apply` turns the contract's row-level rules into expectations on each dataset.
+Reads samples.tpch.orders (the `source_table` variable) and renames its columns. The column names
+must match the contract, or publish fails on schema drift. The rules are not written here: the deploy
+copies the merged contract and contract_expectations.py (from dp-integration) next to this file,
+and `rules.apply` turns the contract's row-level rules into expectations on each dataset.
 """
 from pyspark import pipelines as dp
 
@@ -169,36 +163,14 @@ rules = ContractExpectations.from_file(spark.conf.get("contract_path"))  # noqa:
 SOURCE = spark.conf.get("source_table")  # noqa: F821
 
 
-@dp.materialized_view(name="dim_content_current", table_properties=rules.table_properties())
-@rules.apply("dim_content_current")
-def dim_content_current():
+@dp.materialized_view(name="orders", table_properties=rules.table_properties())
+@rules.apply("orders")
+def orders():
     return spark.sql(f"""
-        SELECT concat('cnt-', title_id) AS content_id, title_id, title_name, genre, content_type, provider,
-               rights_start AS valid_from
+        SELECT o_orderkey AS order_id, o_custkey AS customer_id, o_orderstatus AS order_status,
+               CAST(o_totalprice AS DECIMAL(18,2)) AS total_price, o_orderdate AS order_date,
+               o_orderpriority AS order_priority
         FROM {SOURCE}""")
-
-
-@dp.materialized_view(name="fct_linear_as_run_event", table_properties=rules.table_properties())
-@rules.apply("fct_linear_as_run_event")
-def fct_linear_as_run_event():
-    # Twelve two-hour slots a day per channel for 14 days; each slot airs a catalogue title picked
-    # by hash and runs a little early or late, so the airtime numbers are not all round.
-    return spark.sql("""
-        WITH titles AS (SELECT content_id, row_number() OVER (ORDER BY content_id) - 1 AS n,
-                               count(*) OVER () AS total FROM dim_content_current),
-        slots AS (
-          SELECT channel, ts AS scheduled_start
-          FROM (SELECT explode(array('ch1', 'ch2', 'ch3')) AS channel)
-          CROSS JOIN (SELECT explode(sequence(timestamp'2026-10-26 00:00:00', timestamp'2026-11-08 22:00:00',
-                                              INTERVAL 2 HOURS)) AS ts)),
-        events AS (
-          SELECT channel, scheduled_start, abs(hash(channel, scheduled_start)) AS h FROM slots)
-        SELECT concat(channel, '-', date_format(scheduled_start, 'yyyyMMddHHmm')) AS as_run_event_id,
-               t.content_id, channel AS channel_code, scheduled_start,
-               scheduled_start + make_interval(0, 0, 0, 0, 0, 0, h % 120 - 60) AS actual_start,
-               scheduled_start + make_interval(0, 0, 0, 0, 0, 0, h % 120 - 60 + 5400 + h % 1800) AS actual_end,
-               CAST(5400 + h % 1800 AS INT) AS duration_seconds
-        FROM events e JOIN titles t ON t.n = e.h % t.total""")
 ```
 
 `src/pipeline/contracts.txt`
@@ -207,7 +179,7 @@ def fct_linear_as_run_event():
 # Contracts whose row-level rules this pipeline applies, relative to the data-contracts root.
 # bin/fetch-rules.sh in dp-integration copies them into contracts/ here before each deploy.
 # Keep pipelines/deploy.yml's contracts trigger paths in step with this list.
-contracts/content/content-linear.odcs.yaml
+contracts/sales/orders.odcs.yaml
 ```
 
 Full listing: [`dp-integration/bin/fetch-rules.sh`](../dp-integration/bin/fetch-rules.sh)
@@ -217,7 +189,7 @@ Full listing: [`dp-integration/src/dp_integration/expectations.py`](../dp-integr
 ## Try a bundle change yourself
 
 ```bash
-cd dp-content
+cd dp-orders
 ../dp-integration/bin/fetch-rules.sh src/pipeline/contracts.txt ../data-contracts
 databricks bundle validate -t local --profile <workspace-profile>
 databricks bundle deploy -t local --profile <workspace-profile>

@@ -23,7 +23,7 @@ id: sample-product
 name: Sample product
 version: {version}
 status: {status}
-domain: content
+domain: sales
 dataProduct: sample-product
 team:
   name: Sample team

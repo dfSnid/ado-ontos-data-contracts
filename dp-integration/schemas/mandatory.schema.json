@@ -7,7 +7,7 @@
   "properties": {
     "id": {"type": "string", "minLength": 1},
     "name": {"type": "string", "minLength": 1},
-    "domain": {"type": "string", "enum": ["content", "audience", "viewership"]},
+    "domain": {"type": "string", "enum": ["sales"]},
     "status": {"type": "string", "enum": ["draft", "proposed", "under_review", "approved", "active", "deprecated", "retired"]},
     "team": {
       "type": "object",

@@ -18,7 +18,7 @@ id: sample
 name: Sample
 version: {version}
 status: {status}
-domain: content
+domain: sales
 description:
   purpose: A sample product
 outputPorts:
@@ -151,18 +151,18 @@ def test_unknown_level(world, write_product):
 
 def test_check_product(tmp_path, write_contract, write_product):
     contract = DataContract.from_file(write_contract(status="approved"))
-    (tmp_path / "domains.yaml").write_text("domains:\n  - {name: content}\n")
+    (tmp_path / "domains.yaml").write_text("domains:\n  - {name: sales}\n")
     registry = DomainRegistry.from_file(tmp_path / "domains.yaml")
-    assert check_product(write_product(status="under_review"), {contract.id: contract}, registry, ["content"]) == []
+    assert check_product(write_product(status="under_review"), {contract.id: contract}, registry, ["sales"]) == []
     problems = check_product(write_product(status="active", level="Gold"), {contract.id: contract}, registry,
-                             ["content"])
+                             ["sales"])
     assert problems == ["status active needs contract sample-product active, it is approved"]
-    problems = check_product(write_product(status="approved", level="Gold", scope="domain"), {}, registry, ["news"])
+    problems = check_product(write_product(status="approved", level="Gold", scope="domain"), {}, registry, ["marketing"])
     assert len(problems) == 4  # tag value, missing contract, level and scope before active
 
 
 def test_check_registry(tmp_path):
-    (tmp_path / "domains.yaml").write_text("domains:\n  - {name: content}\n  - {name: news}\n")
+    (tmp_path / "domains.yaml").write_text("domains:\n  - {name: sales}\n  - {name: marketing}\n")
     registry = DomainRegistry.from_file(tmp_path / "domains.yaml")
-    assert check_registry(registry, ["content"]) == [
-        "domain 'news' is registered but not an allowed value of the domain tag"]
+    assert check_registry(registry, ["sales"]) == [
+        "domain 'marketing' is registered but not an allowed value of the domain tag"]

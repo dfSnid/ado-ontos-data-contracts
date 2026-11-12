@@ -3,9 +3,9 @@
 #
 # Usage:
 #   PROFILE=<workspace-profile> ACCOUNT_PROFILE=<account-profile> [ENVIRONMENT=dev] \
-#   [OWNER_EMAIL=<user>] [SKIP_DEMO_TABLES=1] ./bootstrap.sh
+#   [OWNER_EMAIL=<user>] [SKIP_DEMO_CATALOG=1] ./bootstrap.sh
 #
-# Creates: schema and synthetic tables (bootstrap.sql, in env.demoCatalog), the governed tag
+# Creates: the example catalog (bootstrap.sql, env.demoCatalog), the governed tag
 # policies (keys and values from platform.yaml `tags`), and the account groups in
 # platform.yaml `setup.groups`, assigned to the workspace. The catalog is created with SQL
 # because a default-storage metastore rejects the catalogs REST API. OWNER_EMAIL, if set, is
@@ -29,14 +29,14 @@ run_sql() {
   databricks experimental aitools tools query "$1" --warehouse "$WAREHOUSE_ID" --profile "$PROFILE" >/dev/null
 }
 
-# 1. Schema and synthetic tables, one statement at a time (order matters).
-if [ "${SKIP_DEMO_TABLES:-}" = "1" ]; then
+# 1. The example catalog, one statement at a time (order matters).
+if [ "${SKIP_DEMO_CATALOG:-}" = "1" ]; then
   log "== SQL bootstrap: skipped"
 else
 log "== SQL bootstrap"
 python3 -I - "$HERE/bootstrap.sql" "$CATALOG" <<'PY' > "$HERE/.statements.tmp"
 import re, sys
-sql = open(sys.argv[1], encoding="utf-8").read().replace("content_dev", sys.argv[2])
+sql = open(sys.argv[1], encoding="utf-8").read().replace("sales_dev", sys.argv[2])
 body = "\n".join(l for l in sql.splitlines() if not l.lstrip().startswith("--"))
 for stmt in re.split(r";\s*\n", body):
     if stmt.strip():
@@ -68,7 +68,7 @@ tag_policy() {  # tag_policy <logical tag> <description>
     log "  created $key"
   fi
 }
-tag_policy tier        "Data product governance tier (domain = Tier 2, enterprise = Tier 1)"
+tag_policy tier        "Data product governance tier, from governanceTier in the contract"
 tag_policy domain      "Owning business domain of the data product"
 tag_policy status      "Data product lifecycle status, set by the publish job"
 tag_policy sensitivity "Security classification from the data contract"

@@ -37,7 +37,7 @@ def test_config_get(capsys):
 
 def test_config_tag_values(capsys):
     assert cli.main(["-c", str(ROOT / "config"), "config", "tag-values", "tier"], environ={}) == cli.OK
-    assert capsys.readouterr().out == "domain\nenterprise\n"
+    assert capsys.readouterr().out == "domain\n"
 
 
 def test_config_error_exit_code():

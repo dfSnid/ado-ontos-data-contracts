@@ -1,4 +1,4 @@
-# Platform settings: HOW Tier 2 contracts are published. The same in every environment.
+# Platform settings: HOW contracts are published. The same in every environment.
 # WHERE they are published (hosts, ids, service connection) is in environments/<name>.yml.
 # Read by the dpi command and the setup scripts. No secrets in this file.
 
@@ -12,9 +12,12 @@ tags:
     domain: domain
     status: status
     sensitivity: sensitivity
-  # Contract governanceTier -> tier tag value.
+  # Contract governanceTier -> tier tag value. Only the tiers listed here pass CI. This
+  # pipeline implements the domain tier: the product's Data Stewards sign off in the pull
+  # request. An enterprise tier also needs a Business Data Owner sign-off, which is not built
+  # yet, so it is left out and a contract at tier 1 fails check-mandatory. Add
+  # `1: enterprise` once your process has that sign-off.
   tier_values:
-    1: enterprise
     2: domain
   # Contract status -> status tag value. ODCS 3.1.0 has no "published"; active means published.
   status_values:
@@ -28,7 +31,7 @@ tags:
     retired: deprecated
   # Allowed values of the domain and sensitivity tags. Keep these in step with the enums in
   # the mandatory-field schema (a unit test checks that they match).
-  domain_values: [content, audience, viewership]
+  domain_values: [sales]
   sensitivity_values: [public, internal, confidential, restricted]
 
 contract:
@@ -74,7 +77,7 @@ ontos:
     # needs the PRODUCTS approval privilege to certify; the real approval is the Steward's PR.
     publisher:
       name: Contract Publisher
-      description: Publish pipeline identity. Registers Tier 2 domains, contracts, products and quality results.
+      description: Publish pipeline identity. Registers domains, contracts, products and quality results.
       group: dp-publishers
       feature_permissions:
         data-contracts: Read/Write
@@ -86,14 +89,14 @@ ontos:
         PRODUCTS: true
     # Account groups added to the default Ontos roles (add only).
     groups:
-      Data Producer: [dp-content-producers]
-      Data Steward: [dp-content-stewards]
-      Data Consumer: [dp-content-consumers]
+      Data Producer: [dp-sales-producers]
+      Data Steward: [dp-sales-stewards]
+      Data Consumer: [dp-sales-consumers]
 
 setup:
   # Account groups that setup/bootstrap.sh creates and assigns to the workspace. With groups
   # synced from Entra ID, leave this empty and create them there instead.
-  groups: [dp-content-producers, dp-content-stewards, dp-content-consumers, dp-other-analysts]
+  groups: [dp-sales-producers, dp-sales-stewards, dp-sales-consumers, dp-other-analysts]
 
 logging:
   # DEBUG, INFO, WARNING or ERROR. Override for one run with --log-level or DP_LOG_LEVEL.

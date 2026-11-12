@@ -15,7 +15,7 @@ from conftest import ROOT, FakeWorkspace, table
 CONTRACT = textwrap.dedent("""\
     apiVersion: v3.1.0
     kind: DataContract
-    id: linear
+    id: events
     version: 1.2.0
     status: active
     servers:
@@ -69,7 +69,7 @@ CONTRACT = textwrap.dedent("""\
 @pytest.fixture
 def rules():
     import yaml
-    return ContractExpectations(yaml.safe_load(CONTRACT), "linear.odcs.yaml")
+    return ContractExpectations(yaml.safe_load(CONTRACT), "events.odcs.yaml")
 
 
 def test_row_level_rules_in_contract_order(rules):
@@ -89,7 +89,7 @@ def test_get_rules_by_action_and_dimensions(rules):
     assert rules.get_rules("events", "drop") == {"channel_not_null": "`channel` IS NOT NULL"}
     assert rules.get_rules("events", "fail") == {"ends_after_start": "ends > starts"}
     assert rules.dimensions("events")["ends_after_start"] == "consistency"
-    assert rules.table_properties() == {"dp.contract_id": "linear", "dp.contract_version": "1.2.0"}
+    assert rules.table_properties() == {"dp.contract_id": "events", "dp.contract_version": "1.2.0"}
 
 
 @pytest.mark.parametrize("change, error", [
@@ -127,7 +127,7 @@ def test_apply_stacks_one_decorator_per_action(rules, monkeypatch):
 
 
 def contract_file(tmp_path, text=CONTRACT) -> DataContract:
-    path = tmp_path / "linear.odcs.yaml"
+    path = tmp_path / "events.odcs.yaml"
     path.write_text(text, encoding="utf-8")
     return DataContract.from_file(path)
 
@@ -180,20 +180,20 @@ def test_check_fails_on_a_rule_it_cannot_load(tmp_path, caplog):
 
 def test_fetch_rules_copies_the_listed_contracts_and_the_module(tmp_path):
     contracts, bundle = tmp_path / "data-contracts", tmp_path / "bundle" / "src" / "pipeline"
-    (contracts / "contracts" / "content").mkdir(parents=True)
-    (contracts / "contracts" / "content" / "linear.odcs.yaml").write_text(CONTRACT)
+    (contracts / "contracts" / "sales").mkdir(parents=True)
+    (contracts / "contracts" / "sales" / "events.odcs.yaml").write_text(CONTRACT)
     bundle.mkdir(parents=True)
     (bundle / "contracts").mkdir()
     (bundle / "contracts" / "stale.odcs.yaml").write_text("old")
     manifest = bundle / "contracts.txt"
-    manifest.write_text("# rules\ncontracts/content/linear.odcs.yaml   # the linear port\n\n")
+    manifest.write_text("# rules\ncontracts/sales/events.odcs.yaml   # the events port\n\n")
     script = ROOT / "bin" / "fetch-rules.sh"
 
     subprocess.run([str(script), str(manifest), str(contracts)], check=True, capture_output=True)
-    assert sorted(p.name for p in (bundle / "contracts").iterdir()) == ["linear.odcs.yaml"]
+    assert sorted(p.name for p in (bundle / "contracts").iterdir()) == ["events.odcs.yaml"]
     assert (bundle / "contract_expectations.py").read_text() == \
         (ROOT / "src" / "dp_integration" / "expectations.py").read_text()
 
-    manifest.write_text("contracts/content/missing.odcs.yaml\n")
+    manifest.write_text("contracts/sales/missing.odcs.yaml\n")
     r = subprocess.run([str(script), str(manifest), str(contracts)], capture_output=True, text=True)
-    assert r.returncode == 2 and "no contracts/content/missing.odcs.yaml" in r.stderr
+    assert r.returncode == 2 and "no contracts/sales/missing.odcs.yaml" in r.stderr

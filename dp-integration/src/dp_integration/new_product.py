@@ -107,11 +107,12 @@ class NewProduct:
             path.write_text(text, encoding="utf-8")
         return [path for path, _ in planned]
 
-    def registry_entry(self) -> str:
-        """The domains.yaml entry for a domain the registry does not have yet."""
+    def registry_entry(self, publisher_group: str) -> str:
+        """The domains.yaml entry for a domain the registry does not have yet. The publisher's
+        group is in every domain team, so the sync can see the drafts it creates in Ontos."""
         return (f"  - name: {self.domain}\n"
                 f"    description: <What the {self.domain} domain covers.>\n"
                 f"    team:\n"
                 f"      name: {self.domain}-domain\n"
                 f"      title: {_title(self.domain)} domain team\n"
-                f"      groups: [dp-{self.domain}-stewards, dp-{self.domain}-producers, dp-publishers]\n")
+                f"      groups: [dp-{self.domain}-stewards, dp-{self.domain}-producers, {publisher_group}]\n")

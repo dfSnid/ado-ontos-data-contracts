@@ -1,4 +1,4 @@
-# Publish after merge: the Steward's PR approval is the Tier 2 gate, so main is what gets applied.
+# Publish after merge: the Steward's PR approval is the sign-off, so main is what gets applied.
 # Also runs when a data product's bundle deploy completes, so the metadata is applied to the
 # objects the deploy just built (G3 to G4).
 trigger:
@@ -20,9 +20,9 @@ resources:
       ref: refs/heads/main
   pipelines:
     # One entry per data product bundle; source is the ADO pipeline name.
-    - pipeline: content_deploy
-      source: dp-content-deploy
-      project: <ado-project>             # the project that holds dp-content
+    - pipeline: orders_deploy
+      source: dp-orders-deploy
+      project: <ado-project>             # the project that holds dp-orders
       trigger:
         branches:
           include:

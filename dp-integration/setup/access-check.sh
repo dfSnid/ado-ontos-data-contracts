@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# Install check (scenario 6 in docs/12-verify-the-install.md): the consumer group can query a published table, a group that is not in the
-# access file cannot. Safe to re-run.
+# Install check (scenario 9 in docs/12-verify-the-install.md): the consumer group can query a
+# published object, a group that is not in the access file cannot. Safe to re-run.
 #
 # One Databricks-managed test service principal per group (dp-test-consumer in
-# dp-content-consumers, dp-test-other-analyst in dp-other-analysts). Both groups can use the
+# dp-sales-consumers, dp-test-other-analyst in dp-other-analysts). Both groups can use the
 # warehouse, so the only difference is the Unity Catalog grant from the publish job. Each check
 # uses a short-lived OAuth secret that is deleted straight after the query.
 #
 # Usage:
 #   PROFILE=<workspace-profile> ACCOUNT_PROFILE=<account-profile> [ENVIRONMENT=dev] \
-#   [TABLE=<catalog>.catalogue.title] [ALLOWED_GROUP=dp-content-consumers] \
+#   [TABLE=<catalog>.orders.orders] [ALLOWED_GROUP=<first Data Consumer group>] \
 #   [OTHER_GROUP=dp-other-analysts] ./access-check.sh
 set -euo pipefail
 
@@ -18,8 +18,8 @@ set -euo pipefail
 . "$(dirname "$0")/lib.sh"
 WAREHOUSE_ID=$(cfg env.warehouseId)
 WORKSPACE_ID=$(cfg env.workspaceId)
-TABLE="${TABLE:-$(cfg env.demoCatalog).catalogue.title}"
-ALLOWED_GROUP="${ALLOWED_GROUP:-dp-content-consumers}"
+TABLE="${TABLE:-$(cfg env.demoCatalog).orders.orders}"
+ALLOWED_GROUP="${ALLOWED_GROUP:-$(cfg "ontos.role_groups.Data Consumer" | head -1)}"
 OTHER_GROUP="${OTHER_GROUP:-dp-other-analysts}"
 HOST=$(cfg env.workspaceUrl)
 

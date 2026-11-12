@@ -8,9 +8,9 @@ applies the contract's row-level rules to each dataset:
     from contract_expectations import ContractExpectations
     rules = ContractExpectations.from_file(spark.conf.get("contract_path"))
 
-    @dp.materialized_view(name="fct_linear_as_run_event", table_properties=rules.table_properties())
-    @rules.apply("fct_linear_as_run_event")
-    def fct_linear_as_run_event(): ...
+    @dp.materialized_view(name="orders", table_properties=rules.table_properties())
+    @rules.apply("orders")
+    def orders(): ...
 
 So a rule changes only through a contract pull request the Data Stewards approve. The rules,
 in contract order:

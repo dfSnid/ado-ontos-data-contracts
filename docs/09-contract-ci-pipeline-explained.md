@@ -43,7 +43,7 @@ extends:
 `templates/contract-ci.yml`
 
 ```yaml
-# Contract CI for Tier 2 data products. Used as PR build validation on data-contracts.
+# Contract CI for data products. Used as PR build validation on data-contracts.
 # Blocking: ODCS lint, the mandatory-field check, and the product check (data product files,
 # the domain registry, port contracts and versions, status against the contracts).
 # Advisory: quality checks against Databricks. They warn, never fail ("Always Proceed"). One
@@ -142,10 +142,10 @@ stages:
                   for f in contracts/**/*.odcs.yaml; do
                     grep -q "^  - server: $(contractServer)\$" "$f" || continue   # not deployed here
                     if ! datacontract test --server '$(contractServer)' "$f" --output "$(Common.TestResultsDirectory)/quality/$(basename "$f").xml" --output-format junit > out.txt 2>&1; then
-                      echo "##vso[task.logissue type=warning;sourcepath=$f]Quality checks failed for $f (advisory at Tier 2)"
+                      echo "##vso[task.logissue type=warning;sourcepath=$f]Quality checks failed for $f (advisory)"
                     fi
                     cat out.txt
-                    grep -q 'has warnings' out.txt && echo "##vso[task.logissue type=warning;sourcepath=$f]Quality warnings for $f (advisory at Tier 2)"
+                    grep -q 'has warnings' out.txt && echo "##vso[task.logissue type=warning;sourcepath=$f]Quality warnings for $f (advisory)"
                   done
                   exit 0
             - task: AzureCLI@2
@@ -200,17 +200,20 @@ steps:
 
 ## The mandatory-field check
 
-ODCS allows a contract without a Steward or a classification. The overlay schema `schemas/mandatory.schema.json` adds what Tier 2 needs:
+ODCS allows a contract without a Steward or a classification. The overlay schema `schemas/mandatory.schema.json` adds what this platform needs:
 
 - `id`, `name`, `domain` (one of the domain values) and `status`.
 - A team with a named Business Data Owner and a named Data Steward.
 - At least one schema object with properties.
-- Custom properties `governanceTier` (1 or 2), `securityClassification` (one of four values) and `containsPii` (true or false).
+- Custom properties `governanceTier`, `securityClassification` (one of four values) and `containsPii` (true or false).
+
+The check also fails a contract whose `governanceTier` is not in `tags.tier_values` in `platform.yaml`. Only `2: domain` is listed, so an enterprise contract at tier 1 cannot merge until your process has a Business Data Owner sign-off and you add `1: enterprise`.
 
 `dpi check-mandatory` validates each file against it and reports each finding against the line in the file, for example:
 
 ```text
-ERROR   contracts/content/content-catalogue.odcs.yaml:22: missing a named Data Steward
+ERROR   contracts/sales/orders.odcs.yaml:23: missing a named Data Steward
+ERROR   contracts/sales/orders.odcs.yaml:125: governanceTier 1 is not set up on this platform, which publishes 2 (domain) (tags.tier_values in platform.yaml)
 ```
 
 In Azure DevOps the same finding is an error annotation on that line of the pull request.
@@ -244,9 +247,9 @@ A contract's row-level rules run in the product's own Lakeflow pipeline ([Data p
 | The object is not built yet | Skipped, as in publish |
 | A rule has an unknown severity or a repeated name | An error |
 
-**Example output**
+**Example output**, after a change to `validValues: [F, O]` and a misspelt column in `total_price_positive`:
 
 ```text
-WARNING contracts/content/content-linear.odcs.yaml: <catalog>.content.fct_linear_as_run_event.as_run_ends_after_start (warn) would warn on 3 of 504 rows
-ERROR   contracts/content/content-linear.odcs.yaml: rule 'as_run_ends_after_start' does not run on `<catalog>`.`content`.`fct_linear_as_run_event`: [UNRESOLVED_COLUMN] ...
+WARNING contracts/sales/orders.odcs.yaml: <catalog>.orders.orders.order_status_valid_values (warn) would warn on <n> of <rows> rows
+ERROR   contracts/sales/orders.odcs.yaml: rule 'total_price_positive' does not run on `<catalog>`.`orders`.`orders`: [UNRESOLVED_COLUMN] ...
 ```
