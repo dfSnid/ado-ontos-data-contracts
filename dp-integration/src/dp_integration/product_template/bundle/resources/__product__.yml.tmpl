@@ -1,0 +1,30 @@
+resources:
+  schemas:
+    {{module}}:
+      catalog_name: ${var.catalog}
+      name: {{schema}}
+      comment: {{product_name}} data product (bundle {{product}}). Metadata is applied by the publish pipeline.
+
+  pipelines:
+    {{module}}:
+      name: {{product}}
+      catalog: ${var.catalog}
+      schema: ${resources.schemas.{{module}}.name}
+      serverless: true
+      # contract_expectations.py and the contract sit here, copied in by the deploy.
+      root_path: ../src/pipeline
+      libraries:
+        - file:
+            path: ../src/pipeline/{{module}}.py
+      configuration:
+        contract_path: ${workspace.file_path}/src/pipeline/contracts/{{contract}}.odcs.yaml
+        source_table: ${var.source_table}
+
+  jobs:
+    build:
+      name: {{product}}-build
+      description: Refreshes the {{product}} pipeline.
+      tasks:
+        - task_key: refresh
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.{{module}}.id}

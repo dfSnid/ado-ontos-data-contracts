@@ -1,0 +1,47 @@
+# Deploy the {{product}} bundle after merge: dev first, then prod once the {{product}}-prod
+# Environment's approval is given. The data-contracts publish pipeline runs when this one
+# completes, so the Unity Catalog metadata is applied to what was just built.
+#
+# The pipeline applies the rules of the contracts in src/pipeline/contracts.txt, so a merged
+# change to one of them redeploys too (the contracts trigger). Keep its paths and the manifest
+# in step.
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - databricks.yml
+      - resources/**
+      - src/**
+pr: none
+
+resources:
+  repositories:
+    - repository: integration
+      type: git
+      name: <ado-project>/dp-integration   # the project that holds dp-integration
+      ref: refs/heads/main
+    - repository: contracts
+      type: git
+      name: <ado-project>/data-contracts   # the project that holds data-contracts
+      ref: refs/heads/main
+      trigger:
+        branches:
+          include:
+            - main
+        paths:
+          include:
+            - contracts/{{domain}}/{{contract}}.odcs.yaml
+
+extends:
+  template: templates/bundle-deploy.yml@integration
+  parameters:
+    rulesManifest: src/pipeline/contracts.txt
+    environments:
+      - environment: dev          # config/environments/dev.yml in dp-integration
+        target: dev               # databricks.yml target
+        adoEnvironment: {{product}}-dev
+      - environment: prod
+        target: prod
+        adoEnvironment: {{product}}-prod    # add the Approvals check here

@@ -1,0 +1,11 @@
+# Access for the {{contract_name}} contract. Applied by the publish pipeline after merge, in every
+# environment the contract has a server for. This is the full list of direct grants on the
+# contract's objects: publish revokes anything else. Never grant by hand.
+contract: {{contract}}
+grants:
+  - principal: dp-{{domain}}-consumers
+    privileges: [SELECT]
+    objects: [{{dataset}}]
+  - principal: dp-{{domain}}-stewards
+    privileges: [SELECT]
+    objects: [{{dataset}}]

@@ -25,5 +25,9 @@ dpi = "dp_integration.cli:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+# The templates `dpi new-product` renders.
+[tool.setuptools.package-data]
+dp_integration = ["product_template/**/*.tmpl"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
