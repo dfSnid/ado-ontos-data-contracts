@@ -7,6 +7,8 @@
 >
 > **Source:** the folders `dp-integration`, `data-contracts` and `dp-content` in this repository, with a `<placeholder>` for every value that is yours. `scripts/split-repos.sh` turns them into three Azure DevOps repositories.
 
+New here? Start with [How it works](how-it-works.md): the four lanes from pull request to Unity Catalog and Ontos, with diagrams.
+
 ## What you are installing
 
 A Tier 2 (domain) data product publishes its data contract and its product file through Azure DevOps. The Data Steward's pull request approval is the business signature. The product's own bundle builds the objects the contract names. After each merge or deploy, a pipeline makes Unity Catalog and Ontos match `main`. No secret is stored anywhere: the pipelines sign in with workload identity federation.
@@ -45,7 +47,7 @@ Work through the steps in order. Each page explains what the step does, why, the
 | 8 | [Branch policies](10-branch-policies.md) | ADO project admin | A direct push to `main` is rejected |
 | 9 | [Verify the install](12-verify-the-install.md) | Platform engineer with a Data Steward | All six scenarios and the data product checks pass |
 
-Reference pages: [Contract CI pipeline explained](09-contract-ci-pipeline-explained.md), [Publish pipeline explained](11-publish-pipeline-explained.md), [Data products, bundles and pipeline rules](15-data-products-bundles-and-pipeline-rules.md), [Start a new data product](16-start-a-new-data-product.md), [The dpi package](13-the-dpi-package.md) and [Operations and troubleshooting](14-operations-and-troubleshooting.md).
+Reference pages: [How it works](how-it-works.md), [Contract CI pipeline explained](09-contract-ci-pipeline-explained.md), [Publish pipeline explained](11-publish-pipeline-explained.md), [Data products, bundles and pipeline rules](15-data-products-bundles-and-pipeline-rules.md), [Start a new data product](16-start-a-new-data-product.md), [The dpi package](13-the-dpi-package.md) and [Operations and troubleshooting](14-operations-and-troubleshooting.md).
 
 ## Conventions in this guide
 
