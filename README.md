@@ -20,7 +20,7 @@ enforced, not just written down.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/how-it-works-dark.svg">
-  <img alt="The four lanes: create a contract, review and approve it in a pull request, build the product with the rules embedded, publish to Unity Catalog and Ontos. Below, the lifecycle from draft G1 to active G4." src="docs/assets/how-it-works.svg" width="100%">
+  <img alt="Four steps: a Data Producer creates the contract and product file and opens a pull request; CI checks it and a Data Steward approves; the deploy pipeline builds it in dev, then prod, with the quality rules inside; the publish pipeline checks it matches the contract and updates Unity Catalog and Ontos. Below, the four gates from draft (G1) to active (G4)." src="docs/assets/how-it-works.svg" width="100%">
 </picture>
 
 **[Read how it works, step by step](docs/how-it-works.md)**

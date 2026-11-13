@@ -33,38 +33,29 @@ MONO = "ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace"
 # auto (applied by the pipeline), plain (a step the producer takes).
 LANES = [
     ("Create", "Data Producer", [
-        ("plain", "`dpi new-product`", "starts from the template"),
-        ("plain", "ODCS contract", "schema, team, quality rules"),
-        ("plain", "Access file", "who may read each object"),
-        ("plain", "ODPS product file", "output ports and status"),
-        ("plain", "Pull request to main", "on data-contracts"),
+        ("plain", "Data contract", "columns, owners, rules"),
+        ("plain", "Data product file", "what the team publishes"),
+        ("plain", "Pull request", "proposes the change"),
     ]),
-    ("Review and approve", "Contract CI, then Data Stewards", [
-        ("block", "`datacontract lint`", "valid ODCS 3.1.0"),
-        ("block", "`dpi check-mandatory`", "named Steward and owner"),
-        ("block", "`dpi check-products`", "ports, versions, domains"),
-        ("warn", "`datacontract test`", "rules on current data"),
-        ("block", "`dpi check-expectations`", "every pipeline rule runs"),
-        ("sign", "Data Stewards approve", "required reviewer, merge"),
+    ("Review and approve", "CI, then a Data Steward", [
+        ("block", "Standard checks", "a failure stops the merge"),
+        ("warn", "Quality rules tried", "a problem only warns"),
+        ("sign", "Data Steward approves", "the sign-off; then it merges"),
     ]),
-    ("Build, rules embedded", "Product bundle deploy", [
-        ("auto", "`fetch-rules.sh`", "merged contract into bundle"),
-        ("auto", "Deploy to dev", "Databricks Asset Bundle"),
-        ("sign", "Approve, deploy to prod", "Azure DevOps Environment"),
-        ("auto", "`@rules.apply(...)`", "rules become expectations"),
+    ("Build", "Deploy pipeline", [
+        ("auto", "Built in dev", "from the merged contract"),
+        ("sign", "Approved, built in prod", "after a deploy approval"),
+        ("auto", "Quality rules run", "inside the pipeline"),
     ]),
-    ("Publish and sync", "Publisher identity, no secret", [
-        ("block", "Schema drift check", "object matches contract"),
-        ("auto", "Comments and tags", "governed tags, dp.contract_*"),
-        ("auto", "Grants", "exactly the access file"),
-        ("auto", "Ontos contracts", "versions, status, quality"),
-        ("auto", "Ontos data products", "walked through G1 to G4"),
-        ("auto", "Certified badge", "back in Unity Catalog"),
+    ("Publish and sync", "Publish pipeline", [
+        ("block", "Must match the contract", "stops on any difference"),
+        ("auto", "Unity Catalog updated", "tags, comments, access"),
+        ("auto", "Ontos updated", "status and quality"),
     ]),
 ]
 SEVERITY = [("warn", "warning", "keep the row, count it"), ("block", "error", "drop the row"),
             ("block", "critical", "fail the update")]
-LIFECYCLE = ["draft G1", "proposed G2", "approved G3", "active G4", "deprecated", "retired"]
+LIFECYCLE = ["draft (G1)", "proposed (G2)", "approved (G3)", "active (G4)"]
 LEGEND = [("block", "Blocking"), ("warn", "Advisory"), ("sign", "A person approves"),
           ("auto", "Applied by the pipeline")]
 
@@ -127,7 +118,7 @@ def svg(width: int, height: int, title: str, desc: str, body: list[str], style: 
 def how_it_works(c: dict) -> str:
     margin, gap = 16, 24
     card_w = (W - 2 * margin - 3 * gap) / 4
-    track_y, card_y, card_h = 34, 56, 338
+    track_y, card_y, card_h = 34, 56, 92 + 39 * 3 - 8
     body = [f'<rect width="{W}" height="100%" rx="12" fill="{c["canvas"]}"/>']
 
     # The track the token travels along, above the cards.
@@ -155,13 +146,6 @@ def how_it_works(c: dict) -> str:
             body.append(text(x + 36, y, main, 14, c["text"]))
             body.append(text(x + 36, y + 16, detail, 12, c["muted"]))
             y += 39
-        if i == 2:
-            body.append(text(x + 14, y + 4, "Rule severity sets the action", 12.5, c["muted"], "600"))
-            y += 26
-            for kind, sev, action in SEVERITY:
-                body.append(marker(kind, x + 22, y - 5, c))
-                body.append(text(x + 36, y, f"`{sev}`: {action}", 13, c["text"]))
-                y += 24
         if i < 3:  # arrow to the next lane
             ax, ay = x + card_w + 4, card_y + card_h / 2
             body.append(f'<path d="M{ax:g} {ay:g} h{gap - 10} m-6 -6 l6 6 l-6 6" fill="none" '
@@ -169,18 +153,16 @@ def how_it_works(c: dict) -> str:
 
     # The lifecycle strip.
     ly = card_y + card_h + 26
-    body.append(text(margin, ly + 4, "Data product lifecycle: `status` in the product file, one gate at a time",
-                     13.5, c["text"], "600"))
-    chip_w, chip_gap, cy = 140, 24, ly + 22
+    body.append(text(margin, ly + 4, "A data product moves through four gates, one at a time", 13.5, c["text"], "600"))
+    chip_w, chip_gap, cy = card_w, gap, ly + 22
     for j, label in enumerate(LIFECYCLE):
         cx = margin + j * (chip_w + chip_gap)
-        gate = "G" in label
-        body.append(f'<rect x="{cx}" y="{cy}" width="{chip_w}" height="30" rx="15" fill="{c["chip"]}" '
-                    f'stroke="{c["lit"] if gate else c["line"]}" stroke-width="1.5"/>')
+        body.append(f'<rect x="{cx:g}" y="{cy}" width="{chip_w:g}" height="30" rx="15" fill="{c["chip"]}" '
+                    f'stroke="{c["lit"]}" stroke-width="1.5"/>')
         body.append(text(cx + chip_w / 2, cy + 20, label, 13.5, c["text"], "normal", "middle"))
         if j < len(LIFECYCLE) - 1:
             ax = cx + chip_w + 4
-            body.append(f'<path d="M{ax} {cy + 15} h{chip_gap - 8} m-5 -5 l5 5 l-5 5" fill="none" '
+            body.append(f'<path d="M{ax:g} {cy + 15} h{chip_gap - 8} m-5 -5 l5 5 l-5 5" fill="none" '
                         f'stroke="{c["muted"]}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>')
 
     # The legend.
@@ -190,8 +172,6 @@ def how_it_works(c: dict) -> str:
         body.append(marker(kind, lx + 7, gy - 4, c))
         body.append(text(lx + 20, gy, label, 13, c["muted"]))
         lx += 34 + 7.2 * len(label)
-    body.append(text(W - margin, gy, "Steward approval in the pull request is the sign-off", 13, c["muted"],
-                     "normal", "end"))
     height = gy + 18
 
     step = [cx - centres[0] for cx in centres]
@@ -208,14 +188,12 @@ def how_it_works(c: dict) -> str:
         + f"100%{{transform:translateX({step[3]:g}px);opacity:0}}}}"
         + "@media (prefers-reduced-motion: reduce){.lit,.token{animation:none}.lit{opacity:0}}"
     )
-    desc = ("Four lanes, left to right. 1 Create: a Data Producer runs dpi new-product, writes the ODCS "
-            "contract, the access file and the ODPS product file, and opens a pull request. 2 Review and "
-            "approve: contract CI runs datacontract lint, dpi check-mandatory, dpi check-products and dpi "
-            "check-expectations (blocking) and datacontract test (advisory), then the Data Stewards approve. "
-            "3 Build: fetch-rules.sh copies the merged contract into the bundle, which deploys to dev, then to "
-            "prod after an approval, and rules.apply turns the rules into Lakeflow expectations. 4 Publish: "
-            "the publisher identity checks schema drift, sets comments, tags and grants in Unity Catalog, and "
-            "syncs contracts and data products to Ontos. Below, the lifecycle from draft G1 to active G4.")
+    desc = ("Four steps, left to right. 1 Create: a Data Producer writes the data contract and the data "
+            "product file, and opens a pull request. 2 Review and approve: CI checks the change against the "
+            "standard and tries the quality rules, then a Data Steward approves and it merges. 3 Build: the "
+            "deploy pipeline builds the product in dev, then in prod after an approval, with the quality rules "
+            "running inside the pipeline. 4 Publish and sync: the publish pipeline checks the data matches the "
+            "contract, then updates Unity Catalog and Ontos. Below, the four gates from draft (G1) to active (G4).")
     return svg(W, height, "How governance as code works, from pull request to Unity Catalog and Ontos",
                desc, body, style)
 
