@@ -1,0 +1,30 @@
+resources:
+  schemas:
+    orders_schema:
+      catalog_name: ${var.catalog}
+      name: orders
+      comment: Orders data product (bundle orders). Metadata is applied by the publish pipeline.
+
+  pipelines:
+    orders:
+      name: orders
+      catalog: ${var.catalog}
+      schema: ${resources.schemas.orders_schema.name}
+      serverless: true
+      # contract_expectations.py and the contract sit here, copied in by the deploy.
+      root_path: ../src/pipeline
+      libraries:
+        - file:
+            path: ../src/pipeline/orders.py
+      configuration:
+        contract_path: ${workspace.file_path}/src/pipeline/contracts/orders.odcs.yaml
+        source_table: ${var.source_table}
+
+  jobs:
+    build:
+      name: orders-build
+      description: Refreshes the orders pipeline.
+      tasks:
+        - task_key: refresh
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.orders.id}

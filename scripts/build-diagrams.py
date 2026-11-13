@@ -69,10 +69,11 @@ LEGEND = [("block", "Blocking"), ("warn", "Advisory"), ("sign", "A person approv
           ("auto", "Applied by the pipeline")]
 
 RULES = [
-    ("required: true", "on column id", "`id` IS NOT NULL"),
-    ("nullValues, mustBe: 0", "on column loaded_at", "`loaded_at` IS NOT NULL"),
-    ("invalidValues, validValues: [a, b]", "on column category", "`category` IS NULL OR `category` IN ('a', 'b')"),
-    ("expectation: actual_end > actual_start", "custom property on any rule", "actual_end > actual_start"),
+    ("required: true", "on column order_id", "`order_id` IS NOT NULL"),
+    ("nullValues, mustBe: 0", "on column customer_id", "`customer_id` IS NOT NULL"),
+    ("invalidValues, validValues: [F, O, P]", "on column order_status",
+     "`order_status` IS NULL OR `order_status` IN ('F', 'O', 'P')"),
+    ("expectation: total_price > 0", "custom property on any rule", "total_price > 0"),
 ]
 
 W = 1000
@@ -257,7 +258,7 @@ def contract_to_expectation(c: dict) -> str:
     y += 62
     body.append(text(margin + 4, y, "Whole-table rules (unique, row counts, SQL counts) keep running in "
                      "`datacontract test`. The Lakeflow event log records the pass and fail counts.", 12.5, c["muted"]))
-    desc = ("Four contract rules and the expectations they become: required true becomes id IS NOT NULL; a "
+    desc = ("Four contract rules and the expectations they become: required true becomes order_id IS NOT NULL; a "
             "nullValues rule becomes IS NOT NULL; an invalidValues rule becomes IS NULL OR IN the valid values; "
             "an expectation custom property is applied as written. Severity warning or info keeps and counts "
             "the row, error drops it, critical fails the update.")

@@ -3,7 +3,7 @@
 #
 # Usage: scripts/split-repos.sh <ado-organisation> <ado-project> [OUT_DIR]
 #
-# Copies dp-integration, data-contracts and dp-content into OUT_DIR (default ./ado-repos), puts
+# Copies dp-integration, data-contracts and dp-orders into OUT_DIR (default ./ado-repos), puts
 # the project name into the pipeline files and the environment files, makes one commit on main
 # in each and adds the Azure DevOps remote. It never pushes: the push commands are printed at
 # the end. Fill in the environment files (docs/03-configuration.md) before or after, as you prefer.
@@ -13,7 +13,7 @@ ORG="${1:?usage: scripts/split-repos.sh <ado-organisation> <ado-project> [out-di
 PROJECT="${2:?usage: scripts/split-repos.sh <ado-organisation> <ado-project> [out-dir]}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="${3:-$ROOT/ado-repos}"
-REPOS=(dp-integration data-contracts dp-content)
+REPOS=(dp-integration data-contracts dp-orders)
 
 case "$PROJECT$ORG" in *'|'*|*'&'*|*'\'*) echo "names must not contain | & or \\" >&2; exit 2 ;; esac
 [ ! -e "$OUT" ] || { echo "$OUT already exists: remove it or pass another folder" >&2; exit 1; }
@@ -27,7 +27,7 @@ done
 # The pipeline files name the other repositories by project; the setup scripts read the
 # organisation and project from the environment files.
 fill() { sed -i.bak "$1" "$2" && rm "$2.bak"; }
-for f in data-contracts/pipelines/contract-ci.yml data-contracts/pipelines/publish.yml dp-content/pipelines/deploy.yml; do
+for f in data-contracts/pipelines/contract-ci.yml data-contracts/pipelines/publish.yml dp-orders/pipelines/deploy.yml; do
   fill "s|<ado-project>|$PROJECT|g" "$OUT/$f"
 done
 for env in dev prod; do

@@ -3,7 +3,7 @@
 ## 1. Create the project and repositories
 
 1. Create one Azure DevOps project for the data contract path, or use an existing one.
-2. Create three empty Git repositories in it: `dp-integration`, `data-contracts` and `dp-content`. `dp-content` is the first product bundle; each further product gets its own repository.
+2. Create three empty Git repositories in it: `dp-integration`, `data-contracts` and `dp-orders`. `dp-orders` is the example product bundle; each further product gets its own repository.
 3. Clone this repository. It has one folder per Azure DevOps repository.
 
 ## 2. Point the pipelines at your project
@@ -13,8 +13,8 @@ The pipeline files name the other repositories by project. Replace every `<ado-p
 | File | Names |
 |---|---|
 | `data-contracts/pipelines/contract-ci.yml` | `dp-integration` |
-| `data-contracts/pipelines/publish.yml` | `dp-integration`, and the `dp-content-deploy` pipeline as a completion trigger |
-| `dp-content/pipelines/deploy.yml` | `dp-integration` (the template and `fetch-rules.sh`) and `data-contracts` (the contracts its pipeline applies) |
+| `data-contracts/pipelines/publish.yml` | `dp-integration`, and the `dp-orders-deploy` pipeline as a completion trigger |
+| `dp-orders/pipelines/deploy.yml` | `dp-integration` (the template and `fetch-rules.sh`) and `data-contracts` (the contracts its pipeline applies) |
 
 `data-contracts/pipelines/contract-ci.yml`
 
@@ -38,7 +38,7 @@ extends:
 
 `ref: refs/heads/main` means the pipelines always use the tooling on `dp-integration/main` and the contracts on `data-contracts/main`. A change reaches them only after it is merged there.
 
-Also set the workspace host in `dp-content/databricks.yml` and in each contract's `servers`, and the catalogs of the `dev` and `prod` targets.
+Also set the workspace host in `dp-orders/databricks.yml` and in each contract's `servers`, and the catalogs of the `dev` and `prod` targets.
 
 ## 3. Fill in the environment files and push
 
@@ -46,7 +46,7 @@ Fill in `dp-integration/config/environments/dev.yml` and `prod.yml` as described
 
 ```bash
 scripts/split-repos.sh <organisation> <project>     # writes ado-repos/<repo>
-for repo in dp-integration data-contracts dp-content; do
+for repo in dp-integration data-contracts dp-orders; do
   (cd "ado-repos/$repo" && git push -u origin main)
 done
 ```
@@ -60,7 +60,7 @@ git -c http.extraheader="Authorization: Bearer $T" push -u origin main
 
 ## 4. Create the Stewards group in Azure DevOps
 
-Create one Azure DevOps group per data product, for example **Content Data Stewards**, in Project settings, Permissions. Add the product's Data Stewards. The branch policy on [Branch policies](10-branch-policies.md) makes it a required reviewer for that product's contract and product folders.
+Create one Azure DevOps group per data product, for example **Sales Data Stewards**, in Project settings, Permissions. Add the product's Data Stewards. The branch policy on [Branch policies](10-branch-policies.md) makes it a required reviewer for that product's contract and product folders.
 
 ## 5. Install the dpi command
 
@@ -73,7 +73,7 @@ dpi --version
 cd dp-integration && dpi -e <env> config get env.databricksHost
 ```
 
-Run the unit tests once to check the install (131 tests, no network needed):
+Run the unit tests once to check the install (no network needed):
 
 ```bash
 pip install -e "./dp-integration[test]" && (cd dp-integration && python -m pytest -q)
@@ -115,7 +115,6 @@ Options go before or after the command: `-c/--config-dir`, `-e/--environment`, `
 | `data-contracts/products/<domain>/` | `<product>.odps.yaml`: the product, its output ports and target status |
 | `data-contracts/domains/domains.yaml` | The domain registry: each domain and its owner team |
 | `data-contracts/pipelines/` | `contract-ci.yml` and `publish.yml`, which extend the templates |
-| `dp-content/databricks.yml`, `resources/content.yml` | The bundle: targets `local`, `dev` and `prod`; the pipeline and the build job |
-| `dp-content/src/pipeline/` | The Lakeflow pipeline and `contracts.txt`, the contracts whose rules it applies |
-| `dp-content/src/metric_view.py`, `src/mv_linear_airtime.yaml` | Creates or alters the metric view |
-| `dp-content/pipelines/deploy.yml` | The deploy pipeline, which extends `bundle-deploy.yml` |
+| `dp-orders/databricks.yml`, `resources/orders.yml` | The bundle: targets `local`, `dev` and `prod`; the pipeline and the build job |
+| `dp-orders/src/pipeline/` | The Lakeflow pipeline and `contracts.txt`, the contracts whose rules it applies |
+| `dp-orders/pipelines/deploy.yml` | The deploy pipeline, which extends `bundle-deploy.yml` |

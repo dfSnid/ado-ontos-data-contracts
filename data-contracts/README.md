@@ -1,8 +1,7 @@
 # data-contracts
 
-The data contracts, data product files and domain registry for Tier 2 (domain) data products.
-A change merged to `main` is what gets published. The Data Steward's pull request approval is
-the business sign-off. The example data is synthetic.
+The data contracts, data product files and domain registry. A change merged to `main` is what
+gets published. The Data Steward's pull request approval is the business sign-off.
 
 ## Layout
 
@@ -15,11 +14,12 @@ the business sign-off. The example data is synthetic.
 | `pipelines/contract-ci.yml` | Pull request validation; extends `templates/contract-ci.yml` in `dp-integration` | The platform team |
 | `pipelines/publish.yml` | Publish after merge or after a bundle deploy; extends `templates/publish.yml` | The platform team |
 
-The example is one domain (`content`) with two contracts and one product:
+The example is one domain (`sales`) with one contract and one product:
 
-- `content-catalogue`: two tables created by `dp-integration/setup/bootstrap.sh`.
-- `content-linear`: two materialized views and a metric view, built by the `dp-content` bundle.
-- `content`: the data product, with one output port on `content-linear`.
+- `contracts/sales/orders.odcs.yaml`: the `orders` materialized view, built by the `dp-orders`
+  bundle from `samples.tpch.orders`, which every Databricks workspace has.
+- `products/sales/orders.odps.yaml`: the Orders data product, with one output port on that
+  contract.
 
 ## How a change flows
 

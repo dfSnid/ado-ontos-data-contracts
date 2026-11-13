@@ -1,0 +1,28 @@
+# Orders data product (ODPS v1.0.0). Registered in Ontos by the publish pipeline
+# (dpi sync-products), owned by the sales domain team.
+# Each output port names a contract by its id and version; the port version must match the
+# contract file. Move the status with the gates: draft (G1), proposed (G2), approved (G3: port
+# contracts approved), active (G4: port contracts active, objects built by dp-orders).
+# certificationLevel (Bronze, Silver or Gold) needs status active, and also sets the Certified
+# badge in Unity Catalog.
+apiVersion: v1.0.0
+kind: DataProduct
+id: orders
+name: Orders
+version: 1.0.0
+status: active
+domain: sales
+description:
+  purpose: Customer orders, with status, value and priority, for sales reporting.
+  usage: Start with the Orders port, sales_prod.orders.orders.
+  limitations: Built from the TPC-H sample data.
+outputPorts:
+  - name: Orders
+    version: 1.0.0
+    contractId: orders
+    description: One row per order, with the contract's quality rules applied in the pipeline.
+customProperties:
+  - property: governanceTier
+    value: 2
+  - property: certificationLevel
+    value: Silver

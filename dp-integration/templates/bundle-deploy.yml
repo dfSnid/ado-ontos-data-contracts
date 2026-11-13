@@ -17,7 +17,7 @@
 # identity needs workspace access and CREATE SCHEMA on the catalogs (setup/publisher-identity.sh
 # with publisherDeploysBundles: 'true'). Use a separate deploy identity in production.
 parameters:
-  - name: environments        # [{environment: dev, target: dev, adoEnvironment: content-dev}, ...]
+  - name: environments        # [{environment: dev, target: dev, adoEnvironment: orders-dev}, ...]
     type: object
   - name: runJob              # bundle job resource to run after each deploy; '' runs nothing
     type: string

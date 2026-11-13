@@ -1,10 +1,9 @@
-"""Text checks for every file in the repository: no em-dash or en-dash, no Databricks token.
+"""Secret check for every file in the repository: no Databricks personal access token.
 
-The docs use plain hyphens for ranges (6-14 ms) and restructure a sentence instead of an
-em-dash. A personal access token (dapi...) must never be committed: the pipelines sign in with
-workload identity federation, so no file needs one.
+A token (dapi...) must never be committed: the pipelines sign in with workload identity
+federation, so no file needs one.
 
-Usage: python3 scripts/check-text.py [ROOT]   (default: the repository root)
+Usage: python3 scripts/check-secrets.py [ROOT]   (default: the repository root)
 Exit code 1 lists every hit as path:line.
 """
 from __future__ import annotations
@@ -15,7 +14,6 @@ import sys
 from pathlib import Path
 
 CHECKS = {
-    "em-dash or en-dash": re.compile("[\u2013\u2014]"),
     "Databricks token": re.compile(r"\bdapi[0-9a-f]{32}\b"),
 }
 
@@ -38,7 +36,7 @@ def main() -> int:
             hits += [f"{path.relative_to(root)}:{n}: {what}" for what, rx in CHECKS.items() if rx.search(line)]
     for hit in hits:
         print(hit)
-    print(f"check-text: {len(hits)} problems")
+    print(f"check-secrets: {len(hits)} problems")
     return 1 if hits else 0
 
 

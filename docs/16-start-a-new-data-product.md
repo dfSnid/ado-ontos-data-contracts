@@ -2,7 +2,7 @@
 
 ## What you get
 
-`dpi new-product` writes everything a new Tier 2 data product needs, from templates that ship in
+`dpi new-product` writes everything a new data product needs, from templates that ship in
 the `dpi` package:
 
 | File | Where | What it is |
@@ -14,9 +14,10 @@ the `dpi` package:
 | `src/pipeline/<product>.py`, `src/pipeline/contracts.txt` | New bundle folder | The pipeline, with the contract's rules applied by `@rules.apply(...)` |
 | `pipelines/deploy.yml` | New bundle folder | The deploy pipeline, extending the shared bundle-deploy template |
 
-Every generated file passes the blocking CI checks as it stands (ODCS lint, mandatory fields,
-products and domains), so the first pull request is green. `dp-content` remains the full worked
-example, with two materialized views and a metric view.
+Once the domain is in the registry, every generated file passes the blocking CI checks as it
+stands (ODCS lint, mandatory fields, products and domains), so the first pull request is green.
+`dp-orders` is what this command wrote for `--domain sales --product orders`, with the query,
+columns and rules changed to read `samples.tpch.orders`.
 
 ## Generate it
 
@@ -24,7 +25,7 @@ From the root of a `data-contracts` checkout, with `dp-integration` installed:
 
 ```bash
 export DP_CONFIG_DIR=../dp-integration/config
-dpi new-product --domain content --product orders
+dpi new-product --domain sales --product returns
 ```
 
 | Option | Default | Meaning |
@@ -80,4 +81,4 @@ This is the order of a change from [Data products, bundles and pipeline rules](1
    check on `<product>-prod`.
 3. Create the pipeline from `pipelines/deploy.yml`, named `dp-<product>-deploy`, and run it once.
 4. Add it to `data-contracts/pipelines/publish.yml` as a pipeline resource, like
-   `content_deploy`, so publish runs after each deploy.
+   `orders_deploy`, so publish runs after each deploy.

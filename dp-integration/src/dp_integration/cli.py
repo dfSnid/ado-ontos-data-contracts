@@ -10,7 +10,7 @@
     dpi -e dev ontos-roles                                setup: map groups onto Ontos roles
     dpi -e dev ontos-check                                setup: call Ontos as the current identity
     dpi -e dev config get env.warehouseId                 setup scripts: read one setting
-    dpi new-product --domain content --product orders     start a product: contract, product file, bundle
+    dpi new-product --domain sales --product orders       start a product: contract, product file, bundle
 
 Exit codes: 0 success, 1 at least one contract or call failed, 2 a setting is missing or invalid.
 
@@ -117,7 +117,9 @@ class CommandContext:
 # Commands. Each takes the parsed arguments and a CommandContext and returns an exit code.
 
 def check_mandatory(args: argparse.Namespace, ctx: CommandContext) -> int:
-    checker = MandatoryFieldChecker.from_file(args.schema or ctx.settings.contract.mandatory_schema)
+    s = ctx.settings
+    checker = MandatoryFieldChecker.from_file(args.schema or s.contract.mandatory_schema,
+                                              s.tags.tier_values, s.contract.tier_property)
     failed = 0
     for path in args.contracts:
         try:
@@ -271,7 +273,7 @@ def new_product(args: argparse.Namespace, ctx: CommandContext) -> int:
     registry = contracts_root / "domains" / "domains.yaml"
     known = registry.is_file() and DomainRegistry.from_file(registry).get(new.domain) is not None
     v = new.values
-    steps = [] if known else [f"Add the domain to {registry} (a platform owner reviews it):\n\n{new.registry_entry()}"]
+    steps = [] if known else [f"Add the domain to {registry} (a platform owner reviews it):\n\n{new.registry_entry(ctx.settings.ontos.publisher_role.group)}"]
     steps += [
         "Replace every <placeholder> in the contract, access and product files, and describe the real columns.",
         f"Open a pull request in data-contracts: contract CI checks it, the {new.domain} Data Stewards approve.",

@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 import yaml
 from jsonschema import Draft202012Validator
@@ -55,14 +55,20 @@ class Finding:
 
 
 class MandatoryFieldChecker:
-    def __init__(self, schema: dict[str, Any]):
+    """`tiers`: the governance tiers this platform publishes (tags.tier_values), by number. A
+    contract at any other tier is a finding, so a tier whose sign-off is not built cannot merge."""
+
+    def __init__(self, schema: dict[str, Any], tiers: Mapping[int, str] | None = None,
+                 tier_property: str = "governanceTier"):
         Draft202012Validator.check_schema(schema)
         self.schema = schema
         self._validator = Draft202012Validator(schema)
+        self.tiers, self.tier_property = tiers, tier_property
 
     @classmethod
-    def from_file(cls, path: str | Path) -> MandatoryFieldChecker:
-        return cls(json.loads(Path(path).read_text(encoding="utf-8")))
+    def from_file(cls, path: str | Path, tiers: Mapping[int, str] | None = None,
+                  tier_property: str = "governanceTier") -> MandatoryFieldChecker:
+        return cls(json.loads(Path(path).read_text(encoding="utf-8")), tiers, tier_property)
 
     def check(self, path: str | Path) -> list[Finding]:
         """Every missing or invalid mandatory field in one contract file, in document order."""
@@ -75,7 +81,23 @@ class MandatoryFieldChecker:
             return [Finding(str(path), mark.line + 1 if mark else 1, f"not valid YAML: {e}")]
         errors = sorted(self._validator.iter_errors(document),
                         key=lambda e: lines[e.absolute_path])
-        return [Finding(str(path), lines[e.absolute_path], self.describe(e)) for e in errors]
+        findings = [Finding(str(path), lines[e.absolute_path], self.describe(e)) for e in errors]
+        return findings + self._tier_findings(document, lines, str(path))
+
+    def _tier_findings(self, document: Any, lines: LineIndex, source: str) -> list[Finding]:
+        if self.tiers is None or not isinstance(document, dict):
+            return []
+        findings = []
+        for i, prop in enumerate(document.get("customProperties") or []):
+            if not isinstance(prop, dict) or prop.get("property") != self.tier_property:
+                continue
+            value = prop.get("value")
+            if isinstance(value, int) and not isinstance(value, bool) and value not in self.tiers:
+                allowed = ", ".join(f"{t} ({name})" for t, name in sorted(self.tiers.items()))
+                findings.append(Finding(source, lines[("customProperties", i, "value")],
+                                        f"{self.tier_property} {value} is not set up on this platform, which "
+                                        f"publishes {allowed} (tags.tier_values in platform.yaml)"))
+        return findings
 
     @staticmethod
     def describe(error: ValidationError) -> str:

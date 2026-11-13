@@ -5,7 +5,8 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "dp-integration"
 version = "1.0.0"
-description = "Tier 2 data contract tooling: mandatory-field check, Unity Catalog publish, Ontos sync"
+description = "Data contract tooling: mandatory-field check, Unity Catalog publish, Ontos sync"
+license = {text = "Apache-2.0"}
 requires-python = ">=3.11"
 # Pinned so every pipeline run uses the versions this setup was verified with.
 dependencies = [

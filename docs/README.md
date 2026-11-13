@@ -1,19 +1,19 @@
 # Install guide
 
 > [!NOTE]
-> **Audience:** platform engineers installing the Tier 2 data contract path in their own Azure DevOps, Azure and Databricks environment.
+> **Audience:** platform engineers installing the data contract pipeline in their own Azure DevOps, Azure and Databricks environment.
 >
-> **Status:** verified end to end on Azure Databricks and Azure DevOps in November 2026, with synthetic data: contracts, data products and domains, two environments, the bundle deploy and pipeline rules from the contract.
+> **Status:** verified end to end on Azure Databricks and Azure DevOps with the example product (built from `samples.tpch.orders`): contracts, data products and domains, two environments, the bundle deploy and pipeline rules from the contract.
 >
-> **Source:** the folders `dp-integration`, `data-contracts` and `dp-content` in this repository, with a `<placeholder>` for every value that is yours. `scripts/split-repos.sh` turns them into three Azure DevOps repositories.
+> **Source:** the folders `dp-integration`, `data-contracts` and `dp-orders` in this repository, with a `<placeholder>` for every value that is yours. `scripts/split-repos.sh` turns them into three Azure DevOps repositories.
 
 New here? Start with [How it works](how-it-works.md): the four lanes from pull request to Unity Catalog and Ontos, with diagrams.
 
 ## What you are installing
 
-A Tier 2 (domain) data product publishes its data contract and its product file through Azure DevOps. The Data Steward's pull request approval is the business signature. The product's own bundle builds the objects the contract names. After each merge or deploy, a pipeline makes Unity Catalog and Ontos match `main`. No secret is stored anywhere: the pipelines sign in with workload identity federation.
+A data product publishes its data contract and its product file through Azure DevOps. The Data Steward's pull request approval is the business signature. The product's own bundle builds the objects the contract names. After each merge or deploy, a pipeline makes Unity Catalog and Ontos match `main`. No secret is stored anywhere: the pipelines sign in with workload identity federation.
 
-**The Tier 2 path**
+**The path of a change**
 
 ```text
 Data Producer edits a contract or product file on a branch
@@ -45,7 +45,7 @@ Work through the steps in order. Each page explains what the step does, why, the
 | 6 | [Ontos as a Databricks App](07-ontos-as-a-databricks-app.md) | Workspace admin | Ontos is running; URL in the environment file; roles mapped |
 | 7 | [Pipelines in Azure DevOps](08-pipelines-in-azure-devops.md) | ADO project admin | Five pipelines exist and are authorised; smoke run and first bundle deploy pass |
 | 8 | [Branch policies](10-branch-policies.md) | ADO project admin | A direct push to `main` is rejected |
-| 9 | [Verify the install](12-verify-the-install.md) | Platform engineer with a Data Steward | All six scenarios and the data product checks pass |
+| 9 | [Verify the install](12-verify-the-install.md) | Platform engineer with a Data Steward | Every scenario passes |
 
 Reference pages: [How it works](how-it-works.md), [Contract CI pipeline explained](09-contract-ci-pipeline-explained.md), [Publish pipeline explained](11-publish-pipeline-explained.md), [Data products, bundles and pipeline rules](15-data-products-bundles-and-pipeline-rules.md), [Start a new data product](16-start-a-new-data-product.md), [The dpi package](13-the-dpi-package.md) and [Operations and troubleshooting](14-operations-and-troubleshooting.md).
 
@@ -54,7 +54,7 @@ Reference pages: [How it works](how-it-works.md), [Contract CI pipeline explaine
 - `<placeholder>` values are yours to fill in. Everything else can be copied as written.
 - Commands run from the root of the `dp-integration` checkout unless a step says otherwise.
 - `<env>` is the environment name, for example `dev`. It picks `config/environments/<env>.yml`.
-- Group names such as `dp-content-stewards` are the defaults in `platform.yaml`. Change them there and every script and pipeline follows.
+- Group names such as `dp-sales-stewards` are the defaults in `platform.yaml`. Change them there and every script and pipeline follows.
 
 ## All pages
 

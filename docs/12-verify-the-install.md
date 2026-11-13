@@ -1,44 +1,47 @@
 # Verify the install
 
-Use the synthetic Content catalogue product in this repository to prove the install. Run `bootstrap.sh` without `SKIP_DEMO_TABLES` to create its tables, or point the contract at tables of your own.
+Use the example Orders product in this repository to prove the install. It reads
+`samples.tpch.orders`, which every Databricks workspace has, so there is no data to load.
+`bootstrap.sh` creates its catalog (`env.demoCatalog`) in each environment.
+
+The example ships at `active`, the state at the end of these steps. To prove an install, take it
+through the gates from the start.
 
 ## Prepare
 
-1. In `data-contracts/contracts/content/content-catalogue.odcs.yaml`, set the `dev` server `host`, `catalog` and `schema` to your workspace and demo catalog.
-2. Add one real Business Data Owner and one real Data Steward to its `team`.
+1. In `data-contracts/contracts/sales/orders.odcs.yaml`, set `host` on both servers to your
+   workspace. Set the same host in `dp-orders/databricks.yml`.
+2. Put one real Business Data Owner and one real Data Steward in the contract's `team`.
 3. Make sure two different people are available: a Producer and a member of the Stewards group.
+4. On a branch of `data-contracts`, set `status: approved` in the contract and in
+   `products/sales/orders.odps.yaml`, and remove `certificationLevel` from the product. The
+   objects are not built yet, so this is as far as the first pull request can go (G3).
 
-## The six scenarios
-
-| # | Do this | Expect |
-|---|---|---|
-| 1 | On a branch, remove the Data Steward from the team. Open a pull request | Contract CI fails at Mandatory fields, with an annotation on the team line. Lint passes |
-| 2 | Put the Steward back. Push | Contract CI passes. The pull request still cannot complete: the Stewards group is required |
-| 3 | A Steward approves. Complete the pull request | The publish pipeline runs. Unity Catalog shows the tags, comments, contract properties and grants. Ontos shows the contract at its version, active |
-| 4 | Add a column to the table (as the product's own deploy would), add it to the contract, bump the version to the next minor, and merge through a pull request | Ontos shows the new version as the latest. The old version stays visible as its parent. `dp.contract_version` on the tables is the new version |
-| 5 | Look at the quality results | The synthetic data has two titles whose rights end before they start. The rights-window rule warns in Contract CI and lands in Ontos as consistency 0%. Nothing is blocked |
-| 6 | Run `setup/access-check.sh` | A member of the consumer group can query the table. A member of a group not in the access file is refused |
-
-## The product checks
-
-Then take the Content product through its gates ([Data products, bundles and pipeline rules](15-data-products-bundles-and-pipeline-rules.md)). It needs the `content-linear` contract and the `dp-content` bundle.
+## The scenarios
 
 | # | Do this | Expect |
 |---|---|---|
-| 7 | In one pull request, set `content-linear` and `products/content/content.odps.yaml` to `approved`. Merge it | Contract CI passes check-products. Publish reports the three objects as "not built yet", registers the product owned by the content domain team and walks it to approved (G3) |
-| 8 | Merge a change to `dp-content`, or run `dp-content-deploy` by hand | The dev stage deploys and runs the build. The prod stage waits for the content-prod approval. When it completes, publish runs and puts the comments, tags and grants on the new objects |
-| 9 | In one pull request, set the contract and the product to `active` and add `certificationLevel: Silver`. Merge it | Publish checks the objects exist, then moves both to active (G4). Ontos shows the product certified Silver. The port objects show the Certified badge in Catalog Explorer |
-| 10 | Change a pipeline rule in the contract, for example the `expectation` on `as_run_ends_after_start` | Contract CI runs check-expectations on the built objects. A rule that does not run fails the pull request; flagged rows are only warnings. After merge, the contracts trigger redeploys the bundle with the new rule |
+| 1 | On the branch, also remove the Data Steward from the team. Open a pull request | Contract CI fails at Mandatory fields, with an annotation on the team line. Lint passes |
+| 2 | Put the Steward back. Push | Contract CI passes. The pull request still cannot complete: the Stewards group is a required reviewer |
+| 3 | A Steward approves. Complete the pull request | Publish runs. It reports `orders` as "not built yet", registers the contract in Ontos at approved, and registers the product, owned by the sales domain team, and walks it to approved (G3) |
+| 4 | Run `dp-orders-deploy` on `main`, or merge a change to `dp-orders` | The dev stage deploys and runs the build. The prod stage waits for the `orders-prod` approval. When it completes, publish runs and puts the comments, tags and grants on `orders` in each catalog |
+| 5 | In one pull request, set the contract and the product to `active` and put back `certificationLevel: Silver`. Merge it | Publish checks the objects exist, then moves both to active (G4). Ontos shows the product certified Silver. The view shows the Certified badge in Catalog Explorer |
+| 6 | Look at the quality results | Ontos shows one quality item per dimension on the contract version, from `datacontract test`. The pipeline's event log shows the pass and fail counts of each expectation. The sample data passes every rule, so nothing is flagged |
+| 7 | Add a rule: an `invalidValues` rule on `order_priority`. Bump the contract and the product's port to `1.1.0` | Contract CI runs check-expectations on the built view. After merge, the contracts trigger redeploys the bundle with the new rule. Ontos shows 1.1.0 as the latest version, with 1.0.0 as its parent |
+| 8 | Break a rule on a branch: change the `expectation` on `total_price_positive` to name a column that does not exist | Contract CI fails at check-expectations, naming the rule and `UNRESOLVED_COLUMN`. A rule that only flags rows is a warning, never a failure |
+| 9 | Run `setup/access-check.sh` | A member of the consumer group can query the view. A member of a group not in the access file is refused |
 
-## SQL checks for scenario 3
+Close the pull request from scenario 8 without merging it.
+
+## SQL checks for scenario 4
 
 ```sql
 SELECT tag_name, tag_value FROM system.information_schema.table_tags
- WHERE catalog_name = '<demo-catalog>' AND schema_name = 'catalogue' AND table_name = 'title';
+ WHERE catalog_name = '<demo-catalog>' AND schema_name = 'orders' AND table_name = 'orders';
 
-SHOW TBLPROPERTIES <demo-catalog>.catalogue.title ('dp.contract_version');
+SHOW TBLPROPERTIES <demo-catalog>.orders.orders ('dp.contract_version');
 
-SHOW GRANTS ON TABLE <demo-catalog>.catalogue.title;
+SHOW GRANTS ON TABLE <demo-catalog>.orders.orders;
 ```
 
 ## The access check
@@ -53,17 +56,10 @@ PROFILE=<workspace-profile> ACCOUNT_PROFILE=<account-profile> ENVIRONMENT=<env> 
 Expected output:
 
 ```text
-dp-test-consumer (dp-content-consumers): can query, 200 rows
+dp-test-consumer (dp-sales-consumers): can query, <rows> rows
 dp-test-other-analyst (dp-other-analysts): refused, [INSUFFICIENT_PERMISSIONS] ...
 ```
 
 Delete the two test service principals when you are done.
 
 Full listing: [`dp-integration/setup/access-check.sh`](../dp-integration/setup/access-check.sh)
-
-## Results from testing
-
-All six passed on Azure Databricks in November 2026, on Microsoft-hosted agents with synthetic data. Contract CI, publish (also re-run on an unchanged contract), the smoke pipeline and the unit tests pipeline all passed.
-
-- Monday 9 November 2026: the Content product passed G3 before its objects were built, then the bundle deploy, then G4. It ended active and certified Silver, with the Certified badge on its port objects.
-- Tuesday 10 November 2026: on a personal (`local`) deploy, the pipeline applied 14 rules from the contract to the two materialized views (200 and 504 rows), and none flagged a row. A rule with a misspelt column (`actual_endd`) made check-expectations name the rule and the error (`UNRESOLVED_COLUMN`) and exit 1. `datacontract test` still passed all 56 checks.

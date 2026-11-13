@@ -1,9 +1,9 @@
 # dp-integration
 
-Shared tooling for Tier 2 data contracts and data products: the `dpi` command, the Azure DevOps
+Shared tooling for data contracts and data products: the `dpi` command, the Azure DevOps
 pipeline templates and the one-off setup scripts. The contracts, the product files and the
 domain registry live in the data-contracts repository; each product's bundle has its own
-repository (for example dp-content). Synthetic example data only.
+repository (for example dp-orders).
 
 ## Layout
 
@@ -12,7 +12,7 @@ repository (for example dp-content). Synthetic example data only.
 | `config/platform.yaml` | HOW contracts are published: tag keys and values, grant policy, Ontos roles, groups |
 | `config/environments/<name>.yml` | WHERE: hosts, ids, service connection. Also an ADO variable template |
 | `config/environments/example.yml` | Placeholder copy to start a new environment from |
-| `config/environments/dev.yml`, `prod.yml` | Two example environments: one workspace, catalogs `content_dev` and `content_prod` |
+| `config/environments/dev.yml`, `prod.yml` | Two example environments: one workspace, catalogs `sales_dev` and `sales_prod` |
 | `src/dp_integration/` | The `dpi` package (see below) |
 | `schemas/mandatory.schema.json` | Mandatory-field overlay used by `dpi check-mandatory` |
 | `templates/contract-ci.yml` | PR validation: blocking lint, mandatory fields, products and domains; advisory quality |
@@ -51,7 +51,7 @@ dpi -e prod sync-products --dry-run --profile <oauth-profile> products/**/*.odps
 dpi -e dev ontos-roles --dry-run --profile <oauth-profile>
 dpi -e dev ontos-check --profile <oauth-profile>
 dpi -e dev config get env.warehouseId
-dpi new-product --domain content --product orders   # contract, product file and bundle, from templates
+dpi new-product --domain sales --product returns   # contract, product file and bundle, from templates
 ```
 
 Exit codes: 0 success, 1 a contract or call failed, 2 a setting is missing or invalid.
@@ -153,7 +153,7 @@ filled in. Leave `publisherClientId` and `ontosUrl` as their `<placeholder>` val
 print them. A script that reads a value that is still empty or a placeholder stops with exit
 code 2 and names it, before it changes anything.
 
-1. `setup/bootstrap.sh`: tag policies, groups, and the synthetic demo tables
+1. `setup/bootstrap.sh`: tag policies, groups, and the example catalog
 2. `setup/publisher-identity.sh`: managed identity, WIF service connection, Databricks rights;
    put the client id it prints into `publisherClientId`. Run it once per environment file
    (`ENVIRONMENT=prod` after creating the prod catalog)

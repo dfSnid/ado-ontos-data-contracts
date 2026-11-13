@@ -63,7 +63,7 @@ def test_line_index_falls_back_to_parent():
 
 def test_mandatory_check_passes_on_a_complete_contract():
     checker = MandatoryFieldChecker.from_file(ROOT / "schemas/mandatory.schema.json")
-    contract = ROOT.parent / "data-contracts/contracts/content/content-catalogue.odcs.yaml"
+    contract = ROOT.parent / "data-contracts/contracts/sales/orders.odcs.yaml"
     if not contract.is_file():
         pytest.skip("data-contracts checkout not next to dp-integration")
     assert checker.check(contract) == []
@@ -93,3 +93,30 @@ def test_mandatory_check_reports_bad_yaml_as_a_finding(tmp_path):
     checker = MandatoryFieldChecker.from_file(ROOT / "schemas/mandatory.schema.json")
     [finding] = checker.check(path)
     assert "not valid YAML" in finding.message and finding.line > 1
+
+
+EXAMPLE = ROOT.parent / "data-contracts/contracts/sales/orders.odcs.yaml"
+
+
+@pytest.fixture
+def tier1_contract(tmp_path):
+    """The example contract moved to governanceTier 1."""
+    if not EXAMPLE.is_file():
+        pytest.skip("data-contracts checkout not next to dp-integration")
+    text = EXAMPLE.read_text()
+    assert "value: 2 " in text
+    path = tmp_path / "orders.odcs.yaml"
+    path.write_text(text.replace("value: 2 ", "value: 1 ", 1))
+    return path
+
+
+def test_a_tier_the_platform_does_not_publish_is_a_finding(tier1_contract):
+    checker = MandatoryFieldChecker.from_file(ROOT / "schemas/mandatory.schema.json", {2: "domain"})
+    [finding] = checker.check(tier1_contract)
+    assert "governanceTier 1 is not set up on this platform, which publishes 2 (domain)" in finding.message
+    assert tier1_contract.read_text().splitlines()[finding.line - 1].strip().startswith("value: 1")
+
+
+def test_the_cli_rejects_tier_1_with_the_default_config(tier1_contract):
+    from dp_integration import cli
+    assert cli.main(["-c", str(ROOT / "config"), "check-mandatory", str(tier1_contract)], environ={}) == cli.FAILED

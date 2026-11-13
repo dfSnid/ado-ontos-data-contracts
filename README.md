@@ -6,12 +6,17 @@
 [![ODCS 3.1.0](https://img.shields.io/badge/ODCS-3.1.0-informational)](https://bitol-io.github.io/open-data-contract-standard/)
 [![ODPS v1.0.0](https://img.shields.io/badge/ODPS-v1.0.0-informational)](https://bitol-io.github.io/open-data-product-standard/)
 
-Data contracts (ODCS) and data products (ODPS) live in git. A pull request is the change request,
-contract CI enforces the standard, and the Data Steward's approval is the sign-off. After the
-merge, pipelines build the product on Databricks with the contract's quality rules as Lakeflow
-expectations, then make Unity Catalog and [Ontos](https://github.com/databrickslabs/ontos) match
-what was approved. No secret is stored anywhere: the pipelines sign in with workload identity
-federation.
+Most governance lives in policy documents and depends on people remembering them. This
+repository turns the policy into checks and pipeline steps on Databricks.
+
+You describe each dataset in a data contract, a YAML file in git. A change is a pull request.
+CI checks it against your standard, and the Data Steward approves it. After the merge, the
+pipelines build the data with the contract's quality rules, then set Unity Catalog and
+[Ontos](https://github.com/databrickslabs/ontos) to match. Nothing is applied by hand, so what
+runs is always what was approved. No secret is stored anywhere.
+
+It is for data platform teams on Databricks who want ownership, quality and access to be
+enforced, not just written down.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/how-it-works-dark.svg">
@@ -20,14 +25,18 @@ federation.
 
 **[Read how it works, step by step](docs/how-it-works.md)**
 
-## Why governance as code
+## What it gives you
 
-Most data governance plans describe stewardship, standards and quality as policy: a document says
-every dataset has an owner, changes are approved and access matches the agreement. Whether that
-happens depends on people remembering to do it. Here each of those statements is a check or a
-pipeline step. A change that breaks the standard cannot merge, an approval is recorded on the pull
-request, and Unity Catalog and Ontos are set from `main`, so what runs is always what was signed.
-Git keeps the audit trail for free.
+- **A standard that cannot be skipped.** A contract without a named Data Steward and Business
+  Data Owner, a domain, a status or a classification fails the pull request.
+- **An approval that is recorded.** The product's Data Stewards sign off by approving the pull
+  request, so the pull request records who approved what, and when.
+- **Quality rules in one place.** The rules live in the contract and run inside the product's
+  pipeline. Nobody copies them into code.
+- **A catalogue that matches reality.** After the merge, comments, tags and grants in Unity
+  Catalog are set from the contract. A grant nobody approved is revoked.
+- **A clear lifecycle.** A product moves from draft to active through four gates, and each gate
+  is checked, not assumed.
 
 ## Governance on paper vs governance as code
 
@@ -40,6 +49,22 @@ Git keeps the audit trail for free.
 | Access matches the agreement | Publish makes the grants match the access file and revokes anything not listed |
 | Every dataset is classified | Governed tags for tier, domain, status and sensitivity come from the contract, never by hand |
 | Products are certified before people rely on them | The product reaches `active` (G4) only when its contracts are active and its objects exist; certification sets the Certified badge |
+
+## Words used here
+
+| Term | Meaning |
+|---|---|
+| Data contract | A YAML file in the [ODCS](https://bitol-io.github.io/open-data-contract-standard/) format: a dataset's columns, quality rules, owners, servers and status |
+| Data product | A YAML file in the [ODPS](https://bitol-io.github.io/open-data-product-standard/) format: what a team publishes for others to use |
+| Output port | One thing a data product publishes. Each port names a contract and its version |
+| Data Producer | The engineer who builds a product and writes its contract |
+| Data Steward | The person accountable for a product's data. Their pull request approval is the sign-off |
+| Business Data Owner | The business person accountable for the data. Every contract names one |
+| Governance tier | How much sign-off a contract needs. This repository implements the domain tier (2), where the Stewards approve. A contract at tier 1 (enterprise) fails CI until you add that sign-off |
+| Publisher identity | The service identity the pipelines run as. It is the only writer to Unity Catalog metadata and Ontos |
+| G1 to G4 | The lifecycle gates: `draft`, `proposed`, `approved`, `active` |
+| Workload identity federation | How the pipelines sign in to Azure and Databricks without a stored secret |
+| [Ontos](https://github.com/databrickslabs/ontos) | A Databricks Labs app that lists the contracts and products, with their status and quality. Here it is a display copy |
 
 ## How it works
 
@@ -73,13 +98,13 @@ In the contract:
 ```yaml
 quality:
   - type: sql
-    name: as_run_ends_after_start
-    query: SELECT count(*) FROM ${object} WHERE actual_end <= actual_start
+    name: total_price_positive
+    query: SELECT count(*) FROM ${object} WHERE total_price <= 0
     mustBe: 0
     severity: warning
     customProperties:
       - property: expectation
-        value: actual_end > actual_start
+        value: total_price > 0
 ```
 
 In the pipeline, a dataset only needs the decorator:
@@ -87,9 +112,9 @@ In the pipeline, a dataset only needs the decorator:
 ```python
 rules = ContractExpectations.from_file(spark.conf.get("contract_path"))
 
-@dp.materialized_view(name="fct_linear_as_run_event", table_properties=rules.table_properties())
-@rules.apply("fct_linear_as_run_event")
-def fct_linear_as_run_event():
+@dp.materialized_view(name="orders", table_properties=rules.table_properties())
+@rules.apply("orders")
+def orders():
     ...
 ```
 
@@ -131,7 +156,7 @@ The contracts list, and the quality results the sync attaches to each contract v
 
 ## Try it in five minutes
 
-The unit tests and the contract checks need no cloud access. With Python 3.11 or later:
+You need Python 3.11 or later and nothing else: no Databricks, Azure or Ontos access.
 
 ```bash
 git clone <this repository> && cd <repository folder>
@@ -145,30 +170,62 @@ dpi check-mandatory contracts/*/*.odcs.yaml
 dpi check-products products/*/*.odps.yaml
 ```
 
-Then try a failing change: remove the Data Steward from `team` in
-`contracts/content/content-catalogue.odcs.yaml` and run `dpi check-mandatory` again. That is the
-check that stops the pull request.
+Both checks pass on the example, an Orders product in a `sales` domain. It reads
+`samples.tpch.orders`, which every Databricks workspace has.
+
+**See a change being stopped.** In `contracts/sales/orders.odcs.yaml`, delete the Data Steward
+from `team` and run the check again:
+
+```text
+$ dpi check-mandatory contracts/*/*.odcs.yaml
+ERROR   contracts/sales/orders.odcs.yaml:23: missing a named Data Steward
+INFO    1 of 1 contracts failed the mandatory-field check
+```
+
+In a pull request, that is the check that blocks the merge. Put the Steward back and it passes.
+
+**See the tier rule.** Set the contract's `governanceTier` to `1` and run it again:
+
+```text
+ERROR   contracts/sales/orders.odcs.yaml:125: governanceTier 1 is not set up on this platform, which publishes 2 (domain) (tags.tier_values in platform.yaml)
+```
+
+Set it back to `2` when you are done.
 
 ## Adopt it in your organisation
 
-**Start a data product from the template.** From a `data-contracts` checkout:
+There are two ways in.
+
+**The core needs no cloud.** The contracts, the `dpi` checks and the product template run
+anywhere Python does. Use them in any CI to hold contracts to a standard before they merge.
+
+**The full platform** adds the build and the publish. It runs on Azure DevOps, Azure Databricks
+with Unity Catalog, and Ontos.
+
+### Start a data product from the template
+
+From a `data-contracts` checkout:
 
 ```bash
-dpi new-product --domain content --product sample-orders
+dpi new-product --domain sales --product returns
 ```
 
 It writes the contract, the access file and the product file at `draft` (G1), and a bundle for
-the product, all passing the blocking checks as they stand. Replace the `<placeholder>` values and
-open the first pull request. See [Start a new data product](docs/16-start-a-new-data-product.md).
+the product. All of them pass the blocking checks as they stand. Replace the `<placeholder>`
+values and open the first pull request. A new domain also needs an entry in the domain registry.
+See [Start a new data product](docs/16-start-a-new-data-product.md).
 
-**Install the platform.** You need:
+### Install the full platform
+
+You need:
 
 - An Azure subscription and a resource group for the publisher identity.
 - An Azure Databricks Premium workspace with Unity Catalog, a serverless SQL warehouse,
   Databricks Apps and Lakebase Autoscaling.
 - An Azure DevOps organisation connected to the same Entra ID tenant.
+- A checkout of [Ontos](https://github.com/databrickslabs/ontos) v1.0.2, with its frontend built.
 - On your machine: the Azure CLI with the `azure-devops` extension, the Databricks CLI 0.294 or
-  later, Python 3.11 or later, Node.js (once, to build the Ontos frontend), git and rsync.
+  later, Python 3.11 or later, Node.js (to build the Ontos frontend), git and rsync.
 
 Follow the [install guide](docs/README.md). In short:
 
@@ -182,21 +239,20 @@ Follow the [install guide](docs/README.md). In short:
 5. Create the pipelines and the branch policies in Azure DevOps.
 6. Prove the install with the [verification scenarios](docs/12-verify-the-install.md).
 
-**What you can change without touching code:** tag names, group names and grant behaviour in
-`dp-integration/config/platform.yaml`; hosts, ids and service connections per environment in
+**What you can change without touching code:** tag names, group names, tiers and grant behaviour
+in `dp-integration/config/platform.yaml`; hosts, ids and service connections per environment in
 `config/environments/`; the business domains in `data-contracts/domains/domains.yaml`.
 
 ## Scope and roadmap
 
-This covers Tier 2: domain data products, where the product's Stewards approve changes in the pull
-request and Ontos is the registration and display copy. Azure DevOps is the reference CI; the
-pattern itself does not depend on it, since every check is a `dpi` command.
+This covers domain data products: the product's Stewards approve changes in the pull request,
+and Ontos is the registration and display copy. Azure DevOps is the reference CI. The pattern
+does not depend on it, since every check is a `dpi` command.
 
 Next:
 
 - **GitHub Actions** equivalents of the four pipelines.
-- **Tier 1** enterprise products, with a Business Data Owner sign-off in Ontos.
-- **A neutral example domain** alongside the current content example.
+- **Enterprise products**, with a Business Data Owner sign-off as well as the Stewards'.
 
 ## Repository layout
 
@@ -206,18 +262,15 @@ Each of the first three folders becomes its own Azure DevOps repository.
 |---|---|---|
 | [`dp-integration/`](dp-integration/README.md) | The shared tooling: the `dpi` Python package, the product template, the Azure DevOps pipeline templates, the configuration and the one-off setup scripts | Platform team |
 | [`data-contracts/`](data-contracts/README.md) | The contracts and access files, the data product files, the domain registry and two small pipeline files | Data Producers and Stewards |
-| [`dp-content/`](dp-content/README.md) | The worked example product bundle: a Lakeflow pipeline, a build job and a metric view for the `content` product | Data Producers |
+| [`dp-orders/`](dp-orders/README.md) | The example product bundle: a Lakeflow pipeline and a build job for the Orders product | Data Producers |
 | [`docs/`](docs/README.md) | How it works, the install guide step by step, and the reference pages | |
 | `scripts/split-repos.sh` | Turns the three folders into three Git repositories for Azure DevOps | |
-| `scripts/check-text.py` | Text checks CI runs on every file: no em-dash or en-dash, no Databricks token | |
+| `scripts/check-secrets.py` | The check CI runs on every file: no Databricks token | |
 | `scripts/build-diagrams.py` | Builds the infographics in `docs/assets/` | |
-
-The example domain, contracts and product use synthetic data: a content catalogue and a
-two-week linear schedule on placeholder channels.
 
 ## Versions
 
-Verified with Databricks CLI 1.18, Ontos v1.0.2, datacontract-cli 1.2.7 and databricks-sdk
+Verified with Databricks CLI 1.18 (0.294 or later works), Ontos v1.0.2, datacontract-cli 1.2.7 and databricks-sdk
 0.151.0, on Microsoft-hosted `ubuntu-latest` agents. `dp-integration/pyproject.toml` pins the
 Python packages, so every pipeline run uses the same versions.
 
@@ -227,12 +280,14 @@ ones that govern changes.
 
 ## Contributing and security
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the checks to run before a pull request, and
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the checks to run before a pull request,
+[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for how we work together, and
 [SECURITY.md](SECURITY.md) to report a vulnerability privately.
 
 ## Licence
 
-Apache License 2.0: see [LICENSE](LICENSE). Ontos is not included: the Ontos setup step clones it
-from its own repository, under its own licence.
+Apache License 2.0: see [LICENSE](LICENSE), and [NOTICE](NOTICE) for the copyright holder. Ontos
+is not included. The Ontos setup step deploys your own checkout of it, which keeps its own
+licence.
 
 This is a reference implementation, provided as is. It is not a supported Databricks product.

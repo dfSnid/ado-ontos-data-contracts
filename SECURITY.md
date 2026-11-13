@@ -15,7 +15,7 @@ There are none to handle, by design:
   variable group or a file.
 - Configuration files hold hosts, ids and names only. Installation values are `<placeholder>`
   entries until you fill them in.
-- `scripts/check-text.py` fails CI on anything that looks like a Databricks personal access token.
+- `scripts/check-secrets.py` fails CI on anything that looks like a Databricks personal access token.
 
 If you find a secret in this repository or its history, report it as above.
 

@@ -19,13 +19,11 @@ dpi check-mandatory contracts/*/*.odcs.yaml
 dpi check-products products/*/*.odps.yaml
 cd ..
 
-python3 scripts/check-text.py
+python3 scripts/check-secrets.py
 python3 scripts/build-diagrams.py --check
 ```
 
-`scripts/check-text.py` fails on an em-dash or en-dash in any file (use a comma, a colon,
-parentheses or two sentences; a plain hyphen for ranges such as `6-14 ms`) and on anything that
-looks like a Databricks personal access token.
+`scripts/check-secrets.py` fails on anything that looks like a Databricks personal access token.
 
 ## What a good change looks like
 
@@ -39,12 +37,11 @@ looks like a Databricks personal access token.
   `--check`.
 - **Placeholders, not values.** Anything specific to an installation is a `<placeholder>` in
   `dp-integration/config/environments/`. The setup scripts stop on an unset one.
-- **Synthetic data only** in examples.
+- **Public sample data only** in examples, such as the `samples` catalog every workspace has.
 
 ## Writing style
 
-Docs use plain, active sentences in British English spelling (organisation, licence as a noun).
-Headings in sentence case. Code, commands and file names in backticks.
+Docs use plain, active sentences. Headings in sentence case. Code, commands and file names in backticks.
 
 ## Reporting a problem
 

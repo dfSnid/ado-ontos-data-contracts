@@ -5,10 +5,10 @@
 # its catalogs, which the platform team adds (CI fails until the tag allows it).
 # Changes need a platform owner's review (required reviewer on /domains).
 domains:
-  - name: content
-    description: What the business makes, buys and schedules, from the content library to the linear schedule.
+  - name: sales
+    description: Orders customers place and what they are worth.
     team:
-      name: content-domain
-      title: Content domain team
+      name: sales-domain
+      title: Sales domain team
       # Producers and Stewards own the products; the publisher group lets the pipeline manage them.
-      groups: [dp-content-stewards, dp-content-producers, dp-publishers]
+      groups: [dp-sales-stewards, dp-sales-producers, dp-publishers]

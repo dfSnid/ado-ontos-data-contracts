@@ -34,4 +34,4 @@ variables:
   ontosAppName: ontos
   ontosLakebaseProject: ontos-db
   ontosAppCatalog: ontos_app
-  demoCatalog: content_dev                      # synthetic tables (setup/bootstrap.sh)
+  demoCatalog: sales_dev                        # the example product's catalog (setup/bootstrap.sh)

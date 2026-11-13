@@ -8,13 +8,13 @@
 | `publish` | `data-contracts` | `pipelines/publish.yml` | On every merge to `main` that changes `contracts/`, `products/` or `domains/`, and when a bundle deploy completes |
 | `ontos-smoke` | `dp-integration` | `setup/ontos-smoke.yml` | By hand, to check the publisher can reach Ontos |
 | `dp-integration-ci` | `dp-integration` | `pipelines/ci.yml` | On every push to `dp-integration/main`; also as build validation there |
-| `dp-content-deploy` | `dp-content` | `pipelines/deploy.yml` | On every merge to `dp-content/main`, and when a contract it applies changes on `data-contracts/main` |
+| `dp-orders-deploy` | `dp-orders` | `pipelines/deploy.yml` | On every merge to `dp-orders/main`, and when a contract it applies changes on `data-contracts/main` |
 
-Keep the name `dp-content-deploy`: the publish pipeline refers to it by that name.
+Keep the name `dp-orders-deploy`: the publish pipeline refers to it by that name.
 
 ## 1. Create the Environments
 
-In Pipelines, Environments, create `content-dev` and `content-prod`. On `content-prod` add an Approvals check with the people who approve a prod deploy. The deploy pipeline waits there before its prod stage.
+In Pipelines, Environments, create `orders-dev` and `orders-prod`. On `orders-prod` add an Approvals check with the people who approve a prod deploy. The deploy pipeline waits there before its prod stage.
 
 ## 2. Create the pipelines
 
@@ -30,7 +30,7 @@ new contract-ci       data-contracts pipelines/contract-ci.yml
 new publish           data-contracts pipelines/publish.yml
 new ontos-smoke       dp-integration setup/ontos-smoke.yml
 new dp-integration-ci dp-integration pipelines/ci.yml
-new dp-content-deploy dp-content     pipelines/deploy.yml
+new dp-orders-deploy  dp-orders      pipelines/deploy.yml
 ```
 
 ## 3. Authorise them
@@ -41,14 +41,14 @@ Each pipeline needs permission to use the service connection and to read the oth
 |---|---|
 | `contract-ci`, `publish` | `dp-integration` |
 | `ontos-smoke`, `dp-integration-ci` | Its own repository only |
-| `dp-content-deploy` | `dp-integration` and `data-contracts` |
+| `dp-orders-deploy` | `dp-integration` and `data-contracts` |
 
 1. Service connection: re-run step 5 with the pipeline ids. The id is in each pipeline's URL (`definitionId=`).
 2. Repositories: the first run of each pipeline stops with "This pipeline needs permission to access a resource", once per repository it has not been allowed to read. Open the run, select View, then Permit. Alternatively, Project settings, Repositories, pick the repository, Security: allow the project build service to read it.
-3. Environments: the first deploy may also ask to use `content-dev` and `content-prod`. Permit them the same way.
+3. Environments: the first deploy may also ask to use `orders-dev` and `orders-prod`. Permit them the same way.
 
 ```bash
-PIPELINE_IDS="<contract-ci-id> <publish-id> <ontos-smoke-id> <dp-content-deploy-id>" \
+PIPELINE_IDS="<contract-ci-id> <publish-id> <ontos-smoke-id> <dp-orders-deploy-id>" \
 PROFILE=<workspace-profile> ACCOUNT_PROFILE=<account-profile> ENVIRONMENT=<env> ./publisher-identity.sh
 ```
 
@@ -142,16 +142,16 @@ steps:
 
 ## 6. Run the deploy pipeline once, before the first publish
 
-The publish pipeline has `dp-content-deploy` as a pipeline resource. Azure DevOps fails to compile a pipeline whose pipeline resource has no successful run yet, with "Unable to resolve latest version for pipeline content_deploy". So run `dp-content-deploy` on `main` and approve its prod stage before `publish` runs for the first time. Do the same after rebuilding an environment, and for each new product bundle before its entry goes into `publish.yml`.
+The publish pipeline has `dp-orders-deploy` as a pipeline resource. Azure DevOps fails to compile a pipeline whose pipeline resource has no successful run yet, with "Unable to resolve latest version for pipeline orders_deploy". So run `dp-orders-deploy` on `main` and approve its prod stage before `publish` runs for the first time. Do the same after rebuilding an environment, and for each new product bundle before its entry goes into `publish.yml`.
 
 The deploy builds the objects in dev, then in prod after the approval, and its completion triggers `publish`. What the bundle does is on [Data products, bundles and pipeline rules](15-data-products-bundles-and-pipeline-rules.md).
 
-`dp-content/pipelines/deploy.yml`
+`dp-orders/pipelines/deploy.yml`
 
 ```yaml
-# Deploy the content bundle after merge: dev first, then prod once the content-prod
-# Environment's approval is given. The contracts repository's publish pipeline runs when this
-# one completes, so the Unity Catalog metadata is applied to what was just built.
+# Deploy the orders bundle after merge: dev first, then prod once the orders-prod
+# Environment's approval is given. The data-contracts publish pipeline runs when this one
+# completes, so the Unity Catalog metadata is applied to what was just built.
 #
 # The pipeline applies the rules of the contracts in src/pipeline/contracts.txt, so a merged
 # change to one of them redeploys too (the contracts trigger). Keep its paths and the manifest
@@ -183,7 +183,7 @@ resources:
             - main
         paths:
           include:
-            - contracts/content/content-linear.odcs.yaml
+            - contracts/sales/orders.odcs.yaml
 
 extends:
   template: templates/bundle-deploy.yml@integration
@@ -192,10 +192,10 @@ extends:
     environments:
       - environment: dev          # config/environments/dev.yml in dp-integration
         target: dev               # databricks.yml target
-        adoEnvironment: content-dev
+        adoEnvironment: orders-dev
       - environment: prod
         target: prod
-        adoEnvironment: content-prod    # add the Approvals check here
+        adoEnvironment: orders-prod    # add the Approvals check here
 ```
 
 Full listing: [`dp-integration/templates/bundle-deploy.yml`](../dp-integration/templates/bundle-deploy.yml)

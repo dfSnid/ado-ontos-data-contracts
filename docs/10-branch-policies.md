@@ -20,9 +20,9 @@ Open Project settings, Repositories, `data-contracts`, Policies, then the `main`
 
 ## 3. Stewards as required reviewers per product
 
-1. Under Automatically included reviewers, add the product's Stewards group, for example **Content Data Stewards**.
+1. Under Automatically included reviewers, add the product's Stewards group, for example **Sales Data Stewards**.
 2. Policy requirement: Required.
-3. Path filter: `/contracts/content/*;/products/content/*` (the product's contract and product folders).
+3. Path filter: `/contracts/sales/*;/products/sales/*` (the product's contract and product folders).
 4. Repeat for every product, each with its own Stewards group and folders.
 
 ## 4. Platform owners on the domain registry
@@ -32,7 +32,7 @@ Open Project settings, Repositories, `data-contracts`, Policies, then the `main`
 3. A new domain also needs a domain tag value and its catalogs, which only the platform team can add.
 
 > [!IMPORTANT]
-> The publish pipeline only runs on `main`, so these policies are the whole approval control at Tier 2. Also deny **Bypass policies** to everyone except a break-glass group.
+> The publish pipeline only runs on `main`, so these policies are the whole approval control. Also deny **Bypass policies** to everyone except a break-glass group.
 
 ## Check it worked
 
@@ -57,4 +57,4 @@ az repos policy build create --organization $ORG --project "$PROJECT" --reposito
 Add the Stewards and platform owners groups as required reviewers in the UI (parts 3 and 4): the CLI takes reviewers by email address.
 
 > [!IMPORTANT]
-> Bundle repositories such as `dp-content` need the same reviewer and build rules on their `main`, set by the team that owns the product. The prod deploy is gated separately, by the Approvals check on the `content-prod` Environment.
+> Bundle repositories such as `dp-orders` need the same reviewer and build rules on their `main`, set by the team that owns the product. The prod deploy is gated separately, by the Approvals check on the `orders-prod` Environment.

@@ -1,6 +1,6 @@
 resources:
   schemas:
-    {{module}}:
+    {{module}}_schema:
       catalog_name: ${var.catalog}
       name: {{schema}}
       comment: {{product_name}} data product (bundle {{product}}). Metadata is applied by the publish pipeline.
@@ -9,7 +9,7 @@ resources:
     {{module}}:
       name: {{product}}
       catalog: ${var.catalog}
-      schema: ${resources.schemas.{{module}}.name}
+      schema: ${resources.schemas.{{module}}_schema.name}
       serverless: true
       # contract_expectations.py and the contract sit here, copied in by the deploy.
       root_path: ../src/pipeline

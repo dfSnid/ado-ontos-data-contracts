@@ -14,7 +14,7 @@
 # publisherCatalogs and publisherDeploysBundles. Put the client id it prints into publisherClientId.
 # With publisherDeploysBundles 'true' the identity also deploys data product bundles
 # (templates/bundle-deploy.yml): workspace access, and CREATE SCHEMA on the catalogs. That is a
-# A shortcut for a trial; production gives bundle deploys their own identity.
+# shortcut for a trial; production gives bundle deploys their own identity.
 #
 # Needs: az CLI logged in to the tenant with Contributor and User Access Administrator
 # on the resource group, the azure-devops extension, and a Databricks account admin.
