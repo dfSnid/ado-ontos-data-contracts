@@ -286,7 +286,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the checks to run before a pull reque
 
 ## Licence
 
-Apache License 2.0: see [LICENSE](LICENSE). Ontos is not included. The Ontos setup step deploys
-your own checkout of it, which keeps its own licence.
+Apache License 2.0: see [LICENSE](LICENSE), and [NOTICE](NOTICE) for the copyright holder. Ontos
+is not included. The Ontos setup step deploys your own checkout of it, which keeps its own
+licence.
 
 This is a reference implementation, provided as is. It is not a supported Databricks product.
