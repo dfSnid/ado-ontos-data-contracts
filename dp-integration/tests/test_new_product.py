@@ -52,6 +52,9 @@ def test_bundle_is_complete_and_filled_in(contracts_root):
     resources = yaml.safe_load((bundle / "resources/returns.yml").read_text())["resources"]
     assert resources["pipelines"]["returns"]["configuration"]["contract_path"].endswith(
         "/contracts/returns.odcs.yaml")
+    # A bundle rejects the same resource key in two resource types.
+    keys = [key for kind in resources.values() for key in kind]
+    assert len(keys) == len(set(keys)), keys
     assert yaml.safe_load((bundle / "databricks.yml").read_text())["targets"]["prod"]["variables"] == {
         "catalog": "sales_prod"}
     # The manifest and the deploy trigger name the same contract, and fetch-rules can find it.
