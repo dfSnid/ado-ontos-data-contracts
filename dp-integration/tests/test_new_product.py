@@ -52,6 +52,8 @@ def test_bundle_is_complete_and_filled_in(contracts_root):
     resources = yaml.safe_load((bundle / "resources/returns.yml").read_text())["resources"]
     assert resources["pipelines"]["returns"]["configuration"]["contract_path"].endswith(
         "/contracts/returns.odcs.yaml")
+    # A workspace allows each pipeline name once, so dev and prod in one workspace need their own.
+    assert resources["pipelines"]["returns"]["name"] == "returns-${bundle.target}"
     # A bundle rejects the same resource key in two resource types.
     keys = [key for kind in resources.values() for key in kind]
     assert len(keys) == len(set(keys)), keys

@@ -7,7 +7,8 @@ resources:
 
   pipelines:
     orders:
-      name: orders
+      # Per target: a workspace allows each pipeline name once, and dev and prod may share one.
+      name: orders-${bundle.target}
       catalog: ${var.catalog}
       schema: ${resources.schemas.orders_schema.name}
       serverless: true
@@ -22,7 +23,7 @@ resources:
 
   jobs:
     build:
-      name: orders-build
+      name: orders-build-${bundle.target}
       description: Refreshes the orders pipeline.
       tasks:
         - task_key: refresh

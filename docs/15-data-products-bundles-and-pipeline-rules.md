@@ -97,7 +97,7 @@ A change to a data quality rule is a contract pull request only. After merge, th
 
 | Object | Kind | Built by |
 |---|---|---|
-| `orders` | Materialized view | The Lakeflow pipeline `orders`, refreshed by the `orders-build` job |
+| `orders` | Materialized view | The Lakeflow pipeline `orders-<target>`, refreshed by the `orders-build-<target>` job |
 
 - **It owns the code and the data, never the metadata.** Comments, tags, grants and the Certified badge come from the contract, through publish.
 - **Three targets.** `local` is a personal copy in a prefixed schema; `dev` and `prod` use the catalogs of the contract's `dev` and `prod` servers.
