@@ -68,20 +68,118 @@ enforced, not just written down.
 
 ## How it works
 
-1. **[Create](docs/how-it-works.md#1-create).** A Data Producer writes the ODCS contract, its
-   access file and the ODPS product file on a branch of `data-contracts`, or starts from the
-   template with `dpi new-product`, and opens a pull request.
-2. **[Review and approve](docs/how-it-works.md#2-review-and-approve).** Contract CI runs
-   `datacontract lint`, `dpi check-mandatory`, `dpi check-products` and `dpi check-expectations`
-   (blocking) and `datacontract test` (advisory). The product's Data Stewards approve, and the
-   change merges.
-3. **[Build with the rules embedded](docs/how-it-works.md#3-build-with-the-rules-embedded).** The
-   product's Databricks Asset Bundle deploys to dev, then to prod after an approval. The merged
-   contract travels with it, and `@rules.apply(...)` turns each row-level rule into an expectation.
-4. **[Publish and sync](docs/how-it-works.md#4-publish-and-sync).** As the publisher identity, the
-   publish pipeline sets comments, governed tags, contract properties and grants in Unity Catalog,
-   then syncs domains, contract versions, quality results and data products to Ontos, through the
-   gates G1 to G4.
+A change goes through four steps. People do the first two. The pipelines do the last two, so
+nothing is applied by hand.
+
+Most steps run **`dpi`**, the command-line tool in this repository (short for data product
+integration). It reads the contract files and the settings in `dp-integration/config/`, then
+either checks them or applies them. Install it with `pip install ./dp-integration`. Two other
+tools do the rest: `datacontract` from the open-source
+[Data Contract CLI](https://cli.datacontract.com), and `databricks`, the Databricks CLI.
+
+Under each step below are the commands that step runs. The pipelines run them for you; the
+comment above each one says what it does. In the commands:
+
+- `-e dev` or `-e prod` picks the environment: its workspace, catalogs and settings, from
+  `dp-integration/config/environments/`. Checks that only read files need no environment.
+- `contracts/**/*.odcs.yaml` means every contract file, and `products/**/*.odps.yaml` every
+  product file.
+- On your own machine, add `--profile <name>` to sign in with a Databricks CLI profile. The
+  pipelines sign in as the publisher identity instead.
+
+### 1. Create
+
+A Data Producer describes the dataset in three files on a branch of `data-contracts`: the
+contract, its access file and the product file. For a new product, the template writes all
+three, and a bundle to build it. Then the Producer opens a pull request to `main`.
+
+```bash
+# Start a product called "returns" in the "sales" domain, at draft (G1).
+dpi new-product --domain sales --product returns
+
+# Optional: run the standard check before opening the pull request.
+dpi check-mandatory contracts/**/*.odcs.yaml
+```
+
+[More on this step](docs/how-it-works.md#1-create).
+
+### 2. Review and approve
+
+Contract CI runs on the pull request. A blocking check that fails stops the merge and says
+why. An advisory check only warns. When CI passes, a Data Steward of
+the product approves the pull request in Azure DevOps, and the change merges.
+
+```bash
+# Blocking: the contract is valid ODCS. CI runs this for each contract.
+datacontract lint contracts/sales/orders.odcs.yaml
+
+# Blocking: every contract names a Data Steward and a Business Data Owner, and has a known
+# domain and status, a governance tier and a security classification.
+dpi check-mandatory contracts/**/*.odcs.yaml
+
+# Blocking: every product points at contracts and versions that exist, and its domain is in
+# the domain registry.
+dpi check-products products/**/*.odps.yaml
+
+# Advisory: run the contract's quality rules on the data in dev. "--server dev" picks the dev
+# entry in the contract's servers. Flagged rows are a warning.
+datacontract test --server dev contracts/sales/orders.odcs.yaml
+
+# Blocking: each rule the pipeline will apply runs on the object in dev, so a typo or a
+# missing column fails here, not in the next pipeline run. Flagged rows are only a warning.
+dpi -e dev check-expectations contracts/**/*.odcs.yaml
+```
+
+[More on this step](docs/how-it-works.md#2-review-and-approve).
+
+### 3. Build with the rules embedded
+
+After the merge, the product's deploy pipeline builds it: in dev first, then in prod once
+someone approves the prod deploy in Azure DevOps. The merged contract travels with the
+bundle. In the pipeline code, `@rules.apply(...)` turns each of its row-level rules into a
+Lakeflow expectation.
+
+```bash
+# From the bundle folder (dp-orders): copy in the merged contracts it lists, and the module
+# that turns their rules into expectations.
+../dp-integration/bin/fetch-rules.sh src/pipeline/contracts.txt ../data-contracts
+
+# Check, deploy and run the bundle in dev. "-t dev" is the target in databricks.yml.
+databricks bundle validate -t dev
+databricks bundle deploy -t dev --auto-approve
+databricks bundle run build -t dev
+```
+
+The prod stage runs the same with `-t prod`. [More on this step](docs/how-it-works.md#3-build-with-the-rules-embedded).
+
+### 4. Publish and sync
+
+The publish pipeline runs after every merge to `contracts/`, `products/` or `domains/`, and after
+every deploy. It makes Unity Catalog and Ontos match `main`, as the publisher identity. It runs
+in dev, then prod. Ontos is updated once, from one environment (prod here).
+
+```bash
+# In each environment: run the quality rules and keep the results for Ontos (advisory).
+datacontract test --server prod contracts/sales/orders.odcs.yaml \
+  --output quality/orders.odcs.yaml.json --output-format json
+
+# In each environment: set comments, governed tags, contract properties and grants in Unity
+# Catalog. Fails if an object no longer matches its contract. Add --dry-run to list the
+# changes without making them.
+dpi -e prod publish-uc contracts/**/*.odcs.yaml
+
+# Once, in Ontos: the domains and their owner teams, from the domain registry.
+dpi -e prod sync-domains domains/domains.yaml
+
+# The contracts: each version, its status and the quality results from --quality-dir.
+dpi -e prod sync-ontos --quality-dir quality contracts/**/*.odcs.yaml
+
+# The data products: each one walks to the status in its file, one gate at a time (G1 to G4),
+# and gets the certification level in its file.
+dpi -e prod sync-products products/**/*.odps.yaml
+```
+
+[More on this step](docs/how-it-works.md#4-publish-and-sync).
 
 ## Quality rules become pipeline expectations
 
