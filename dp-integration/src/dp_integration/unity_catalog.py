@@ -105,8 +105,22 @@ class UnityCatalogPublisher:
         if self.grant_policy.parent_use and contract.access.principals:
             catalog, schema = server["catalog"], f"{server['catalog']}.{server['schema']}"
             self.ensure_privilege("catalog", catalog, "USE_CATALOG", contract.access.principals)
-            self.ensure_privilege("schema", schema, "USE_SCHEMA", contract.access.principals)
+            if self.schema_exists(schema):
+                self.ensure_privilege("schema", schema, "USE_SCHEMA", contract.access.principals)
+            else:
+                # The bundle creates the schema with its objects, so before the first deploy
+                # there is nothing to grant on. A missing object of an active contract has
+                # already failed above.
+                log.warning("schema %s does not exist yet: USE SCHEMA waits for the bundle deploy", schema,
+                            extra={"source": str(contract.path)})
         return ok
+
+    def schema_exists(self, full_name: str) -> bool:
+        try:
+            self.ws.schemas.get(full_name)
+            return True
+        except NotFound:
+            return False
 
     def tags_for(self, contract: DataContract) -> dict[str, str]:
         t = self.tag_policy

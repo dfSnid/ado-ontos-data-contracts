@@ -160,6 +160,14 @@ def test_missing_object_is_pending_until_active(settings, write_contract, caplog
     assert ("does not exist, and contract status 'active' needs it" in caplog.text) is not ok
 
 
+def test_pending_contract_in_a_schema_not_built_yet(settings, write_contract, caplog):
+    # Before the first bundle deploy the schema is missing too: no USE SCHEMA grant, no failure.
+    ws = FakeWorkspace()
+    assert publisher(settings, ws, []).publish(DataContract.from_file(write_contract(status="approved")))
+    assert not any(securable == "schema" for securable, _, _ in ws.grants.updates)
+    assert "USE SCHEMA waits for the bundle deploy" in caplog.text
+
+
 def test_set_certification_tags_built_objects_only(settings, write_mv_contract):
     ws = FakeWorkspace(tables={TITLE: table({"title_id": None, "title_name": None})},
                        tags={TITLE: {"dp_tier": "domain"}})

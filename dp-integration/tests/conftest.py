@@ -87,6 +87,17 @@ class FakeTables:
         return self.tables[full_name]
 
 
+class FakeSchemas:
+    def __init__(self, schemas):
+        self.schemas = schemas
+
+    def get(self, full_name):
+        if full_name not in self.schemas:
+            from databricks.sdk.errors import NotFound
+            raise NotFound(f"Schema '{full_name}' does not exist.")
+        return SimpleNamespace(full_name=full_name)
+
+
 class FakeTagAssignments:
     def __init__(self, tags):
         self.tags = tags  # {full_name: {key: value}}
@@ -110,8 +121,11 @@ class FakeGrants:
 
 
 class FakeWorkspace:
-    def __init__(self, tables=None, grants=None, tags=None):
+    def __init__(self, tables=None, grants=None, tags=None, schemas=None):
         self.tables = FakeTables(tables or {})
+        # A schema exists when one of its tables does, unless the test lists them.
+        self.schemas = FakeSchemas(set(schemas) if schemas is not None else
+                                   {name.rsplit(".", 1)[0] for name in (tables or {})})
         self.grants = FakeGrants(grants or {})
         self.entity_tag_assignments = FakeTagAssignments(tags or {})
 
